@@ -1,0 +1,19 @@
+# This rule tells Netlify how to handle SPA routing.
+# For any path requested that doesn't match a deployed file,
+# serve the main index.html file. The SvelteKit router
+# will then handle displaying the correct page content based
+# on the URL path.
+[[redirects]]
+  from = "/*"          # Match any path
+  to = "/index.html"   # Serve this file instead
+  status = 200         # Important: Use 200 (OK) status for a rewrite,
+                       # NOT a 301/302 redirect. This keeps the
+                       # original URL in the browser address bar.
+
+# Optional: You can also specify your build directory here,
+# though Netlify often detects it automatically or uses
+# settings from its UI. Ensure this matches your 'pages'
+# setting in svelte.config.js if you specify it.
+[build]
+  publish = "build" # Or whatever your output directory is
+  # command = "npm run build" # Or your build command
