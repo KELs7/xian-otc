@@ -127,7 +127,7 @@
 
 
             // 3. Wait 500 millisecond
-            console.log("Waiting 1 second before sending list_offer...");
+            console.log("Waiting 500 milliseconds before sending list_offer...");
             await new Promise(resolve => setTimeout(resolve, 500));
 
 
