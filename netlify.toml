@@ -15,5 +15,5 @@
 # settings from its UI. Ensure this matches your 'pages'
 # setting in svelte.config.js if you specify it.
 [build]
-  publish = "build" # Or whatever your output directory is
-  # command = "npm run build" # Or your build command
+  publish = "build"
+  command = "pnpm build"
