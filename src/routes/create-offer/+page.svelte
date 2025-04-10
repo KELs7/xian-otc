@@ -16,12 +16,12 @@
     let showListModal = false;
     let formError = '';
 
-    // Basic form validation (remains the same)
+    // Basic form validation
     $: formValid =
-        offerTokenName.trim().startsWith('con_') &&
+        (offerTokenName.trim().startsWith('con_') || offerTokenName.trim() === 'currency') &&
         offerAmount > 0 &&
-        takeTokenName.trim().startsWith('con_') &&
-        takeAmount > 0 &&
+        (takeTokenName.trim().startsWith('con_') || takeTokenName.trim() === 'currency') &&
+        takeAmount > 0 && // Check takeAmount directly
         offerTokenName.trim() !== takeTokenName.trim();
 
     // This function now only validates and shows the modal
@@ -29,12 +29,16 @@
     function validateAndShowModal() {
         formError = ''; // Clear previous errors
         if (!offerTokenName.trim().startsWith('con_')) {
-             formError = 'Offer token name must start with "con_".';
-             return;
+            if (offerTokenName.trim() !== 'currency') {
+                 formError = 'Offer token name must start with "con_" or be "currency".';
+                 return;
+            }
         }
         if (!takeTokenName.trim().startsWith('con_')) {
-             formError = 'Take token name must start with "con_".';
-             return;
+             if (takeTokenName.trim() !== 'currency') {
+                 formError = 'Take token name must start with "con_" or be "currency".';
+                 return;
+            }
         }
         if (!(offerAmount > 0)) {
              formError = 'Offer amount must be positive.';
@@ -49,10 +53,12 @@
              return;
          }
 
+        // Re-check formValid just before showing modal
         if (formValid) {
             // Don't set transactionInfo here anymore
             showListModal = true;
         } else {
+            // This case might be redundant now due to earlier checks, but good fallback
             formError = 'Please fill all fields correctly.';
         }
     }
@@ -198,7 +204,7 @@
                 id="offer-token"
                 type="text"
                 bind:value={offerTokenName}
-                placeholder="con_..."
+                placeholder="con_... or currency"
                 required
             />
         </div>
@@ -224,7 +230,7 @@
                 id="take-token"
                 type="text"
                 bind:value={takeTokenName}
-                placeholder="con_..."
+                placeholder="con_... or currency"
                 required
             />
         </div>
@@ -278,9 +284,7 @@
     .form-group {
         margin-bottom: 1.5rem;
     }
-
-     label { }
-
+    
     .form-divider {
         border: none;
         border-top: 1px dashed #ccc;
