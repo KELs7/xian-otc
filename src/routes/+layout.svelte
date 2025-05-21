@@ -13,7 +13,7 @@
     let xdu;
 
     onMount(async ()=>{
-        XianWalletUtils.init('https://testnet.xian.org');
+        XianWalletUtils.init('https://node.xian.org');
 
         try {
             // 1. Get Wallet Info FIRST
