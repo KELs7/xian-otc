@@ -1,12 +1,9 @@
 export const config = {
     otcContract: "con_otc", // CHANGE
-    masterContract: "con_pixel_frames_master_v0_4", // CHANGE
-    networkType: "testnet", // CHANGE
     currencySymbol: "XIAN", // CHANGE
-    domainName: "https://pixelsnek.xian.org", // CHANGE
-    blockExplorer: "https://testnet-explorer.xian.org", // CHANGE
-    masternode: "https://testnet.xian.org", // CHANGE
-    graphqlEndpoint: "https://testnet.xian.org/graphql", // CHANGE
-    webSocketUrl: "wss://testnet.xian.org/websocket",
+    blockExplorer: "https://testnet-explorer.xian.org", // NOT USED
+    masternode: "https://testnet.xian.org", // NOT USED
+    graphqlEndpoint: "https://node.xian.org/graphql", // CHANGE
+    webSocketUrl: "wss://testnet.xian.org/websocket", // NOT USED
     otcFeePercentage: 0.005 
 }
