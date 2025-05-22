@@ -36,7 +36,7 @@ export const handleWalletInfo = (info) => {
 export const handleWalletError = (error) => {
     // Make error message more generic as it catches more than just missing extension now
     console.error("Wallet interaction error:", error); // Log the actual error
-    showToast("Wallet error. Ensure the Xian Wallet extension is installed, unlocked, and updated. Check console for details.", "is-danger");
+    showToast("Ensure the Xian Wallet extension is installed and unlocked", "is-danger");
     walletAddressElementValue.set('Wallet Error'); // More generic error state
 }
 
