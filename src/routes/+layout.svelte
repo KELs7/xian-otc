@@ -5,9 +5,13 @@
     import { walletAddressElementValue } from "$lib/store";
     import { handleWalletError, handleWalletInfo } from '$lib/walletUtils';
     import { onMount, setContext } from "svelte";
+    
+    // Import Bulma CSS
+    import 'bulma/css/bulma.min.css';
+
     import '../app.css'; // Import global styles
 
-    let xianBalance = 0; // Keep initial default
+    let xianBalance = 0; 
 
     $: activePath = $page.url.pathname;
 
@@ -18,37 +22,28 @@
         XianWalletUtils.init(network);
 
         try {
-            // 1. Get Wallet Info FIRST
             const info = await XianWalletUtils.requestWalletInfo();
-
-            // 2. Process the info (this sets the walletAddressElementValue store)
             handleWalletInfo(info);
 
-            // 3. Check if wallet is usable before fetching balance
             if (info && !info.locked) {
-                // Wallet info obtained and it's NOT locked, proceed to get balance
                 XianWalletUtils.getBalance("currency")
                     .then(balance => {
-                        // Add a check to ensure balance is a valid number
                         const numericBalance = parseFloat(balance);
                         xianBalance = isNaN(numericBalance) ? 0 : numericBalance;
                     })
                     .catch(error => {
                         console.error("Error fetching balance:", error);
-                        xianBalance = 0; // Reset to 0 on error
+                        xianBalance = 0; 
                     });
             } else {
-                // Wallet is locked or info is missing - set balance to 0
                 xianBalance = 0;
             }
 
         } catch (error) {
-             // This catch handles errors from requestWalletInfo (e.g., wallet not installed)
             handleWalletError(error);
-            xianBalance = 0; // Ensure balance is 0 if wallet isn't even detected
+            xianBalance = 0; 
         }
 
-        // Assign xdu regardless of wallet state, as it might be needed for other things
         xdu = XianWalletUtils;
     });
 
@@ -170,17 +165,17 @@
         border: 1px solid transparent;
         font-size: 1rem;
         cursor: pointer;
-        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, filter 0.1s ease; /* Added transform and filter */
+        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, filter 0.1s ease; 
         background-color: #007bff;
         color: white;
         border-color: #007bff;
         margin-top: 0.5rem;
     }
-    :global(button:hover:not(:disabled)) { /* Ensure hover only applies to non-disabled buttons */
+    :global(button:hover:not(:disabled)) { 
         background-color: #0056b3;
         border-color: #0056b3;
     }
-    :global(button:active:not(:disabled)) { /* Added active state for non-disabled buttons */
+    :global(button:active:not(:disabled)) { 
         transform: translateY(1px);
         filter: brightness(95%);
     }
@@ -188,7 +183,7 @@
         background-color: #ccc;
         border-color: #ccc;
         cursor: not-allowed;
-        color: #666; /* Darker text on disabled for better contrast */
+        color: #666; 
     }
 
     :global(input[type="text"]),
