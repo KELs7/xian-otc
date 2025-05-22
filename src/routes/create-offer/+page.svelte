@@ -261,7 +261,7 @@
 <Modal
     bind:show={showListModal}
     title="Confirm Offer Listing"
-    message="This will initiate two transactions: 1. Approve the contract to spend your tokens. 2. List the offer. Continue?"
+    message="Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] List your offer."
     on:confirm={handleListConfirm}
     on:close={handleCloseModal}
 />

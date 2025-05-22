@@ -274,7 +274,7 @@
 <Modal
     bind:show={showTakeModal}
     title="Confirm Offer Take"
-    message="This will initiate two transactions: 1. Approve the contract to spend your tokens required for the offer. 2. Take the offer. Continue?"
+    message="Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] Take the offer."
     on:confirm={handleTakeConfirm}
     on:close={handleCloseModal}
 />
