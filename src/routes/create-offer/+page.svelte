@@ -2,7 +2,7 @@
     import Modal from '$lib/components/Modal.svelte';
     import { goto } from '$app/navigation';
     import { transactionInfo } from '$lib/store';
-    import { config } from '$lib/config'; // Ensure config is imported
+    import { getOtcContract, getOtcFeePercentage } from '$lib/config'; // Ensure config is imported
     import { handleTransaction, handleTransactionError } from '$lib/walletUtils';
     import { getContext } from 'svelte';
 
@@ -79,8 +79,8 @@
             if (isNaN(baseOfferAmount) || baseOfferAmount <= 0) {
                 throw new Error("Invalid Offer Amount for calculation.");
             }
-
-            const feeMultiplier = 1 + config.otcFeePercentage;
+            const otcFeePercentage = getOtcFeePercentage();
+            const feeMultiplier = 1 + otcFeePercentage;
             const rawRequiredAmount = baseOfferAmount * feeMultiplier;
 
             // Use Math.ceil() to round UP to the nearest whole number,
@@ -94,10 +94,11 @@
 
 
             // 1. Prepare and Store APPROVE data with the CEILING amount
+            const otcContract = getOtcContract();
             const approveTxData = {
                 method: "approve",
                 kwargs: {
-                    to: config.otcContract,
+                    to: otcContract,
                     amount: amountToApprove // Use the rounded-up amount
                 }
             };
@@ -152,13 +153,13 @@
             transactionInfo.set(listOfferTxData);
 
             console.log("Sending List Offer Tx:", {
-                 contract: config.otcContract,
+                 contract: otcContract,
                  data: $transactionInfo
             });
 
             // 5. Send LIST_OFFER transaction
             const listOfferResponse = await xdu().sendTransaction(
-                config.otcContract,
+                otcContract,
                 $transactionInfo.method,
                 $transactionInfo.kwargs
             ).catch(err => {

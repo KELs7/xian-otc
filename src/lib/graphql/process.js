@@ -1,7 +1,7 @@
-import { config } from "../config";
+import { getGraphqlEndpoint } from "../config";
 
 export async function fetchOpenOffers(query) {
-  const url = config.graphqlEndpoint;
+  const url = getGraphqlEndpoint();
 
   try {
     const response = await fetch(url, {

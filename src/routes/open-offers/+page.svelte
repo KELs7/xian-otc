@@ -2,7 +2,7 @@
     import Modal from '$lib/components/Modal.svelte';
     import { transactionInfo } from '$lib/store';
     import { handleTransaction, handleTransactionError } from '$lib/walletUtils';
-    import { config } from '$lib/config'; // Import config for fee percentage
+    import { getOtcContract, getOtcFeePercentage } from '$lib/config'; // Import config for fee percentage
     import { onMount, getContext } from 'svelte';
     import { getOpenListedOffers } from '$lib/graphql/queries.js';
     import { fetchOpenOffers } from '$lib/graphql/process.js';
@@ -91,7 +91,8 @@
             }
 
             // Calculate amount including fee, similar to create-offer
-            const feeMultiplier = 1 + config.otcFeePercentage;
+            const otcFeePercentage = getOtcFeePercentage();
+            const feeMultiplier = 1 + otcFeePercentage;
             const rawRequiredAmount = baseTakeAmount * feeMultiplier;
 
             // Round UP to the nearest whole number (or contract's precision unit)
@@ -103,10 +104,11 @@
             // --- END: Fee Calculation for Taker Approval ---
 
             // 2. Prepare and Store APPROVE data with CALCULATED amount
+            const otcContract = getOtcContract();
             const approveTxData = {
                 method: "approve",
                 kwargs: {
-                    to: config.otcContract,     // Approve the OTC contract
+                    to: otcContract,     // Approve the OTC contract
                     amount: amountToApprove     // Approve the calculated amount of take_token
                 }
             };
@@ -152,13 +154,13 @@
             transactionInfo.set(takeOfferTxData); // Update store for take_offer
 
             console.log("Sending Take Offer Tx:", {
-                 contract: config.otcContract, // Send take_offer TO THE OTC contract
+                 contract: otcContract, // Send take_offer TO THE OTC contract
                  data: $transactionInfo
             });
 
             // 6. Send TAKE_OFFER transaction
             const takeOfferResponse = await xdu().sendTransaction(
-                config.otcContract,
+                otcContract,
                 $transactionInfo.method,
                 $transactionInfo.kwargs
             ).catch(err => {

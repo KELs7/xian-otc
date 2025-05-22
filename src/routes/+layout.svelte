@@ -1,6 +1,7 @@
 <script>
     import { page } from '$app/stores';
     import XianWalletUtils from '$lib/xianDappUtils.mjs';
+    import { getMasterNode } from '$lib/config';
     import { walletAddressElementValue } from "$lib/store";
     import { handleWalletError, handleWalletInfo } from '$lib/walletUtils';
     import { onMount, setContext } from "svelte";
@@ -13,7 +14,8 @@
     let xdu;
 
     onMount(async ()=>{
-        XianWalletUtils.init('https://node.xian.org');
+        const network = getMasterNode();
+        XianWalletUtils.init(network);
 
         try {
             // 1. Get Wallet Info FIRST
