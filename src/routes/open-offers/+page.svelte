@@ -2,7 +2,7 @@
     import Modal from '$lib/components/Modal.svelte';
     import { transactionInfo } from '$lib/store';
     import { handleTransaction, handleTransactionError } from '$lib/walletUtils';
-    import { getOtcContract, getOtcFeePercentage } from '$lib/config'; // Import config for fee percentage
+    import { getOtcContract, getOtcFeePercentage } from '$lib/config'; 
     import { onMount, getContext } from 'svelte';
     import { getOpenListedOffers } from '$lib/graphql/queries.js';
     import { fetchOpenOffers } from '$lib/graphql/process.js';
@@ -12,8 +12,9 @@
     let paginatedOffers = [];
     let selectedOffer = null;
     let showTakeModal = false;
-    let loading = true;
+    let loading = true; // For loading offers list
     let errorLoading = null;
+    let isTakingOffer = false; // New state for "Take Offer" processing
 
     const itemsPerPage = 25;
     let currentPage = 1;
@@ -51,7 +52,6 @@
         loadOffers(currentPage);
     });
 
-    // handleTakeOfferClick remains the same
     function handleTakeOfferClick(offer) {
         if (!offer || !offer.id || !offer.take_token || offer.take_amount == null) {
             console.error("Invalid offer data selected:", offer);
@@ -67,10 +67,10 @@
         showTakeModal = false;
         selectedOffer = null;
         transactionInfo.set({});
+        // isTakingOffer should be reset if modal is closed prematurely, 
+        // but primarily handled in handleTakeConfirm's finally block.
     }
 
-    // --- MODIFIED: handleTakeConfirm ---
-    // Adds fee calculation to the approval amount
     async function handleTakeConfirm() {
         if (!selectedOffer) {
             console.error("handleTakeConfirm called without a selected offer.");
@@ -79,96 +79,82 @@
             return;
         }
 
+        isTakingOffer = true; // Set loading state for modal confirm button
         console.log(`Confirmed taking offer ${selectedOffer.id}. Initiating approve and take sequence...`);
 
         try {
-            // --- START: Fee Calculation for Taker Approval ---
             const tokenToApprove = selectedOffer.take_token;
-            const baseTakeAmount = parseFloat(selectedOffer.take_amount); // Base amount needed
+            const baseTakeAmount = parseFloat(selectedOffer.take_amount); 
 
             if (isNaN(baseTakeAmount) || baseTakeAmount <= 0) {
                 throw new Error(`Invalid take_amount for approval calculation: ${selectedOffer.take_amount}`);
             }
 
-            // Calculate amount including fee, similar to create-offer
             const otcFeePercentage = getOtcFeePercentage();
             const feeMultiplier = 1 + otcFeePercentage;
             const rawRequiredAmount = baseTakeAmount * feeMultiplier;
-
-            // Round UP to the nearest whole number (or contract's precision unit)
             const amountToApprove = Math.ceil(rawRequiredAmount);
 
             console.log(`Base take amount: ${baseTakeAmount}`);
             console.log(`Raw required (incl. fee): ${rawRequiredAmount}`);
             console.log(`Amount to approve (Ceiling): ${amountToApprove}`);
-            // --- END: Fee Calculation for Taker Approval ---
-
-            // 2. Prepare and Store APPROVE data with CALCULATED amount
+            
             const otcContract = getOtcContract();
             const approveTxData = {
                 method: "approve",
                 kwargs: {
-                    to: otcContract,     // Approve the OTC contract
-                    amount: amountToApprove     // Approve the calculated amount of take_token
+                    to: otcContract,     
+                    amount: amountToApprove     
                 }
             };
-            transactionInfo.set(approveTxData); // Update store for approval
+            transactionInfo.set(approveTxData); 
 
             console.log("Sending Approve Tx:", {
-                contract: tokenToApprove,       // Send approve TO THE TOKEN contract
+                contract: tokenToApprove,       
                 data: $transactionInfo
             });
 
-            // 3. Send APPROVE transaction
             const approveResponse = await xdu().sendTransaction(
                 tokenToApprove,
                 $transactionInfo.method,
                 $transactionInfo.kwargs
             ).catch(err => {
                  handleTransactionError(err);
-                 throw err; // Stop sequence on error
+                 throw err; 
             });
 
-            // Handle immediate errors
              if (approveResponse && approveResponse.errors) {
                  console.error('Approve transaction failed immediately:', approveResponse.errors);
                  handleTransaction(approveResponse);
-                 // Consider stopping
-                 // throw new Error("Approval transaction failed.");
              } else {
                 handleTransaction(approveResponse);
              }
 
-            // 4. Wait briefly
             console.log("Waiting 500 milliseconds before sending take_offer...");
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // 5. Prepare and Store TAKE_OFFER data
-            // Arguments for take_offer itself likely don't change (just needs the ID)
             const takeOfferTxData = {
                 method: "take_offer",
                 kwargs: {
-                    listing_id: selectedOffer.id // Use the ID from the selected offer
+                    listing_id: selectedOffer.id 
                 }
             };
-            transactionInfo.set(takeOfferTxData); // Update store for take_offer
+            transactionInfo.set(takeOfferTxData); 
 
             console.log("Sending Take Offer Tx:", {
-                 contract: otcContract, // Send take_offer TO THE OTC contract
+                 contract: otcContract, 
                  data: $transactionInfo
             });
 
-            // 6. Send TAKE_OFFER transaction
             const takeOfferResponse = await xdu().sendTransaction(
                 otcContract,
                 $transactionInfo.method,
                 $transactionInfo.kwargs
             ).catch(err => {
                  handleTransactionError(err);
-                 throw err; // Stop sequence on error
+                 throw err; 
             });
 
-            // Handle immediate errors
              if (takeOfferResponse && takeOfferResponse.errors) {
                  console.error('Take Offer transaction failed immediately:', takeOfferResponse.errors);
              }
@@ -177,40 +163,35 @@
 
         } catch (error) {
             console.error("Error during take offer transaction sequence:", error);
+            // Error already handled by handleTransactionError or specific toasts
         } finally {
-            // 7. Clean up UI
             console.log("Cleaning up after take offer attempt.");
-            handleCloseModal(); // Close modal, clear state
-            await loadOffers(currentPage); // Reload offers
+            isTakingOffer = false; // Reset loading state
+            handleCloseModal(); 
+            await loadOffers(currentPage); 
         }
     }
 
-    // --- Pagination Functions ---
     function goToPage(pageNumber) {
         if (pageNumber >= 1) {
             currentPage = pageNumber;
-            // Scroll to top when page changes
             if (typeof window !== 'undefined') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-            loadOffers(currentPage); // Fetch data for the new page
+            loadOffers(currentPage); 
         }
     }
 
-    // --- Helper Functions (remain the same) ---
     function shortenAddress(address) {
-        // Ensure value exists and is a string before shortening
         if (typeof address !== 'string' || address.length < 10) return address || 'N/A';
         return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
     }
 
     function formatNumber(num) {
-        // Add check for undefined/null
         if (num === null || typeof num === 'undefined') return 'N/A';
         if (typeof num !== 'number') {
-             // Try converting if it looks like a number string
             const parsedNum = parseFloat(num);
-            if (isNaN(parsedNum)) return num; // Return original if not parseable
+            if (isNaN(parsedNum)) return num; 
             num = parsedNum;
         }
 
@@ -230,11 +211,11 @@
 <div class="offers-container">
     <h1>Open Offers</h1>
 
-    {#if loading}
+    {#if loading && paginatedOffers.length === 0} <!-- Show loading only if no offers are yet displayed -->
         <p class="loading-message">Loading offers...</p>
     {:else if errorLoading}
         <p class="error-message">{errorLoading}</p>
-    {:else if paginatedOffers.length === 0}
+    {:else if paginatedOffers.length === 0 && !loading} <!-- Ensure loading is false before showing no offers -->
         <p>No open offers found.</p>
     {:else}
         <div class="offers-list">
@@ -248,8 +229,7 @@
                          <p class="fee-info">Fee: {offer.fee !== undefined ? offer.fee + '%' : 'N/A'}</p>
                     </div>
                     <div class="offer-action">
-                        <!-- Pass the whole offer object -->
-                        <button on:click={() => handleTakeOfferClick(offer)}>
+                        <button on:click={() => handleTakeOfferClick(offer)} disabled={isTakingOffer || loading}>
                             Take this offer
                         </button>
                     </div>
@@ -257,31 +237,29 @@
             {/each}
         </div>
 
-        <!-- Pagination Controls -->
         <div class="pagination">
-            <button disabled={currentPage <= 1 || loading} on:click={() => goToPage(currentPage - 1)}>
+            <button disabled={currentPage <= 1 || loading || isTakingOffer} on:click={() => goToPage(currentPage - 1)}>
                 « Previous
             </button>
-            <span>Page {currentPage}</span>
-            <button disabled={!hasMorePages || loading} on:click={() => goToPage(currentPage + 1)}>
+            <span>Page {currentPage} {#if loading && paginatedOffers.length > 0}(Updating...){/if}</span>
+            <button disabled={!hasMorePages || loading || isTakingOffer} on:click={() => goToPage(currentPage + 1)}>
                 Next »
             </button>
         </div>
     {/if}
 </div>
 
-<!-- Take Offer Confirmation Modal -->
 <Modal
     bind:show={showTakeModal}
     title="Confirm Offer Take"
     message="Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] Take the offer."
     on:confirm={handleTakeConfirm}
     on:close={handleCloseModal}
+    confirmButtonBusy={isTakingOffer}
 />
 
 
 <style>
-    /* Styles remain largely the same */
     .offers-container { }
     h1 { margin-bottom: 1.5rem; text-align: center; }
     .offers-list { display: grid; gap: 1rem; }

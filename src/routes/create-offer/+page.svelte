@@ -2,32 +2,30 @@
     import Modal from '$lib/components/Modal.svelte';
     import { goto } from '$app/navigation';
     import { transactionInfo } from '$lib/store';
-    import { getOtcContract, getOtcFeePercentage } from '$lib/config'; // Ensure config is imported
+    import { getOtcContract, getOtcFeePercentage } from '$lib/config'; 
     import { handleTransaction, handleTransactionError } from '$lib/walletUtils';
     import { getContext } from 'svelte';
 
     const { xdu } = getContext('app_functions');
 
     let offerTokenName = '';
-    let offerAmount = null; // User input (can be float)
+    let offerAmount = null; 
     let takeTokenName = '';
     let takeAmount = null;
 
     let showListModal = false;
     let formError = '';
+    let isListingOffer = false; // New state for "List Offer" processing
 
-    // Basic form validation
     $: formValid =
         (offerTokenName.trim().startsWith('con_') || offerTokenName.trim() === 'currency') &&
         offerAmount > 0 &&
         (takeTokenName.trim().startsWith('con_') || takeTokenName.trim() === 'currency') &&
-        takeAmount > 0 && // Check takeAmount directly
+        takeAmount > 0 && 
         offerTokenName.trim() !== takeTokenName.trim();
 
-    // This function now only validates and shows the modal
-    // Transaction data preparation happens in handleListConfirm
     function validateAndShowModal() {
-        formError = ''; // Clear previous errors
+        formError = ''; 
         if (!offerTokenName.trim().startsWith('con_')) {
             if (offerTokenName.trim() !== 'currency') {
                  formError = 'Offer token name must start with "con_" or be "currency".';
@@ -53,12 +51,9 @@
              return;
          }
 
-        // Re-check formValid just before showing modal
         if (formValid) {
-            // Don't set transactionInfo here anymore
             showListModal = true;
         } else {
-            // This case might be redundant now due to earlier checks, but good fallback
             formError = 'Please fill all fields correctly.';
         }
     }
@@ -69,37 +64,31 @@
     }
 
     async function handleListConfirm() {
+        isListingOffer = true; // Set loading state for modal confirm button
         console.log("Confirmed listing. Initiating approve and list sequence...");
 
         let approvalSent = false;
 
         try {
-            // --- START: Fee Calculation & Rounding ---
-            const baseOfferAmount = parseFloat(offerAmount); // Get the numeric value
+            const baseOfferAmount = parseFloat(offerAmount); 
             if (isNaN(baseOfferAmount) || baseOfferAmount <= 0) {
                 throw new Error("Invalid Offer Amount for calculation.");
             }
             const otcFeePercentage = getOtcFeePercentage();
             const feeMultiplier = 1 + otcFeePercentage;
             const rawRequiredAmount = baseOfferAmount * feeMultiplier;
-
-            // Use Math.ceil() to round UP to the nearest whole number,
-            // mimicking likely contract integer math requirement.
             const amountToApprove = Math.ceil(rawRequiredAmount);
 
             console.log(`Base amount: ${baseOfferAmount}`);
             console.log(`Raw required (incl. fee): ${rawRequiredAmount}`);
             console.log(`Amount to approve (Ceiling): ${amountToApprove}`);
-            // --- END: Fee Calculation & Rounding ---
-
-
-            // 1. Prepare and Store APPROVE data with the CEILING amount
+            
             const otcContract = getOtcContract();
             const approveTxData = {
                 method: "approve",
                 kwargs: {
                     to: otcContract,
-                    amount: amountToApprove // Use the rounded-up amount
+                    amount: amountToApprove 
                 }
             };
             transactionInfo.set(approveTxData);
@@ -111,7 +100,6 @@
                 data: $transactionInfo
             });
 
-            // 2. Send APPROVE transaction
             const approveResponse = await xdu().sendTransaction(
                 tokenContractToApprove,
                 $transactionInfo.method,
@@ -122,30 +110,21 @@
             });
             approvalSent = true;
 
-            // Handle immediate errors
             if (approveResponse && approveResponse.errors) {
                  console.error('Approve transaction failed immediately:', approveResponse.errors);
                  handleTransaction(approveResponse);
-                 // Consider stopping if approval fails immediately
-                 // throw new Error("Approval transaction failed immediately.");
             } else {
                 handleTransaction(approveResponse);
             }
 
-
-            // 3. Wait 500 millisecond
             console.log("Waiting 500 milliseconds before sending list_offer...");
             await new Promise(resolve => setTimeout(resolve, 500));
 
-
-            // 4. Prepare and Store LIST_OFFER data
-            // Pass the ORIGINAL, un-rounded baseOfferAmount here.
-            // The contract uses this to calculate the listing details.
             const listOfferTxData = {
                 method: "list_offer",
                 kwargs: {
                     offer_token: offerTokenName.trim(),
-                    offer_amount: baseOfferAmount, // Use original float/decimal amount
+                    offer_amount: baseOfferAmount, 
                     take_token: takeTokenName.trim(),
                     take_amount: takeAmount
                 }
@@ -157,7 +136,6 @@
                  data: $transactionInfo
             });
 
-            // 5. Send LIST_OFFER transaction
             const listOfferResponse = await xdu().sendTransaction(
                 otcContract,
                 $transactionInfo.method,
@@ -167,7 +145,6 @@
                  throw err;
             });
 
-            // Handle immediate errors
              if (listOfferResponse && listOfferResponse.errors) {
                  console.error('List Offer transaction failed immediately:', listOfferResponse.errors);
              }
@@ -175,9 +152,8 @@
 
         } catch (error) {
             console.error("Error during transaction sequence:", error);
-            // Toast already shown? Add specific feedback if needed.
         } finally {
-            // 6. Clean up UI
+            isListingOffer = false; // Reset loading state
             console.log("Cleaning up form and closing modal.");
             offerTokenName = '';
             offerAmount = null;
@@ -207,6 +183,7 @@
                 bind:value={offerTokenName}
                 placeholder="con_... or currency"
                 required
+                disabled={isListingOffer}
             />
         </div>
 
@@ -220,6 +197,7 @@
                 step="any"
                 min="0.00000001"
                 required
+                disabled={isListingOffer}
             />
         </div>
 
@@ -233,6 +211,7 @@
                 bind:value={takeTokenName}
                 placeholder="con_... or currency"
                 required
+                disabled={isListingOffer}
             />
         </div>
 
@@ -246,6 +225,7 @@
                 step="any"
                 min="0.00000001"
                 required
+                disabled={isListingOffer}
             />
         </div>
 
@@ -253,21 +233,26 @@
              <p class="error-message">{formError}</p>
          {/if}
 
-        <button type="submit" disabled={!formValid}>List Offer</button>
+        <button type="submit" disabled={!formValid || isListingOffer}>
+            {#if isListingOffer}
+                Processing...
+            {:else}
+                List Offer
+            {/if}
+        </button>
     </form>
 </div>
 
-<!-- List Offer Confirmation Modal -->
 <Modal
     bind:show={showListModal}
     title="Confirm Offer Listing"
     message="Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] List your offer."
     on:confirm={handleListConfirm}
     on:close={handleCloseModal}
+    confirmButtonBusy={isListingOffer}
 />
 
 <style>
-    /* Styles remain the same */
     .create-offer-container {
         max-width: 600px;
         margin: 0 auto;

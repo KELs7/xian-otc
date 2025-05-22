@@ -64,12 +64,11 @@
         <div class="logo">OTC</div>
         {#if $walletAddressElementValue}
             <div class="wallet-balance">
-                <!-- Display balance. Consider formatting -->
-                {$walletAddressElementValue} | {xianBalance.toLocaleString()} <!-- Example formatting -->
+                {$walletAddressElementValue} | {xianBalance.toLocaleString()} 
             </div>
         {:else}
              <div class="wallet-balance">
-                Wallet Not Connected <!-- Default if store is empty/null initially -->
+                Wallet Not Connected 
             </div>
         {/if}
     </header>
@@ -88,21 +87,19 @@
     </main>
 
     <footer class="app-footer">
-        <!-- Optional footer content -->
         <p>© {new Date().getFullYear()} OTC Platform</p>
     </footer>
 </div>
 
 <style>
-    /* Styles remain the same */
     .app-container {
         display: flex;
         flex-direction: column;
         min-height: 100vh;
-        max-width: 1000px; /* Max width for larger screens */
-        margin: 0 auto;    /* Center content */
-        padding: 0 1rem;   /* Padding on smaller screens */
-        box-sizing: border-box; /* Include padding in width */
+        max-width: 1000px; 
+        margin: 0 auto;    
+        padding: 0 1rem;   
+        box-sizing: border-box; 
     }
 
     .app-header {
@@ -138,10 +135,10 @@
         color: #555;
         font-weight: 500;
         border-bottom: 3px solid transparent;
-        margin-bottom: -2px; /* Align bottom border with container border */
+        margin-bottom: -2px; 
         transition: color 0.2s ease, border-color 0.2s ease;
         text-align: center;
-        flex-grow: 1; /* Make tabs share space */
+        flex-grow: 1; 
     }
 
     .tabs a:hover {
@@ -154,7 +151,7 @@
     }
 
     .main-content {
-        flex-grow: 1; /* Takes up remaining vertical space */
+        flex-grow: 1; 
         padding: 1rem 0;
     }
 
@@ -173,20 +170,25 @@
         border: 1px solid transparent;
         font-size: 1rem;
         cursor: pointer;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
+        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, filter 0.1s ease; /* Added transform and filter */
         background-color: #007bff;
         color: white;
         border-color: #007bff;
         margin-top: 0.5rem;
     }
-    :global(button:hover) {
+    :global(button:hover:not(:disabled)) { /* Ensure hover only applies to non-disabled buttons */
         background-color: #0056b3;
         border-color: #0056b3;
+    }
+    :global(button:active:not(:disabled)) { /* Added active state for non-disabled buttons */
+        transform: translateY(1px);
+        filter: brightness(95%);
     }
     :global(button:disabled) {
         background-color: #ccc;
         border-color: #ccc;
         cursor: not-allowed;
+        color: #666; /* Darker text on disabled for better contrast */
     }
 
     :global(input[type="text"]),
