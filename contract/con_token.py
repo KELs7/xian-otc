@@ -34,10 +34,6 @@ def transfer_from(amount: float, to: str, main_account: str):
     balances[to] += amount
 
 @export
-def get_balance(vk: str):
-    return balances[vk]
-
-@export
-def get_allowance(vk: str, spender:str):
-    # Handle potential None allowance gracefully for tests
-    return balances[vk, spender] if balances[vk, spender] is not None else decimal('0')
+def balance_of(address: str):
+    return balances[address]
+    

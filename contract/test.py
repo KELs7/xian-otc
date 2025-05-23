@@ -2,7 +2,7 @@ import unittest
 import os
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
-from decimal import Decimal # Keep importing Decimal
+from contracting.stdlib.bridge.decimal import ContractingDecimal as Decimal
 
 # Define fixed date for deterministic tests
 TEST_DATETIME = Datetime(year=2024, month=6, day=20, hour=10, minute=0, second=0)
@@ -19,6 +19,7 @@ class TestOtcContract(unittest.TestCase):
     otc_contract_name = "con_otc"
     token_a_name = "con_token_a"
     token_b_name = "con_token_b"
+    token_c_name = "con_token_c_conceptual" # ADD THIS LINE
     initial_balance = Decimal("10000.0")
     default_fee_percent = Decimal("0.5")
 
@@ -78,11 +79,11 @@ class TestOtcContract(unittest.TestCase):
         # Pass Decimal directly
         token_contract.approve(amount=amount, to=spender_vk, signer=vk)
         # FIX: Compare ContractingDecimal with Decimal directly
-        self.assertEqual(token_contract.get_allowance(vk=vk, spender=spender_vk), amount)
+        self.assertEqual(token_contract.balances[vk, spender_vk], amount)
 
     # Helper to get balance - returns ContractingDecimal or Decimal(0)
     def _get_balance_contracting_or_zero(self, token_contract, vk: str):
-        balance = token_contract.get_balance(vk=vk)
+        balance = token_contract.balance_of(address=vk)
         # Return ContractingDecimal or standard Decimal(0.0) if None
         return balance if balance is not None else Decimal("0.0")
 
@@ -225,8 +226,99 @@ class TestOtcContract(unittest.TestCase):
         self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_contract_name), maker_fee)
         self.assertEqual(self._get_balance_contracting_or_zero(self.token_b, self.otc_contract_name), taker_fee)
 
-    # ... (Apply similar comparison fixes to other tests: 07, 08, 09, 10, 12, 13, 14, 15, 17, 18, 19, 20, 21) ...
-    # Example for test_10
+    def test_06_take_offer_already_taken(self):
+        offer_amount = Decimal("100.0")
+        take_amount = Decimal("50.0")
+        maker_fee = offer_amount / Decimal("100.0") * self.default_fee_percent
+        # taker_fee is not strictly needed for this test flow but good for completeness if we were checking taker balances
+        taker_fee = take_amount / Decimal("100.0") * self.default_fee_percent
+        maker_required_approval = offer_amount + maker_fee
+        taker_required_approval = take_amount + taker_fee
+
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, maker_required_approval)
+        listing_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=self.environment, # list_offer uses now, so environment is important
+            offer_token=self.token_a_name, offer_amount=offer_amount,
+            take_token=self.token_b_name, take_amount=take_amount)
+
+        self._approve_transfer(self.token_b, self.taker_vk, self.otc_contract_name, taker_required_approval)
+        # FIX: Removed environment argument as take_offer contract method doesn't use now
+        self.otc_contract.take_offer(signer=self.taker_vk, listing_id=listing_id)
+
+        self._fund_account(self.token_b, self.other_vk, taker_required_approval) 
+        self._approve_transfer(self.token_b, self.other_vk, self.otc_contract_name, taker_required_approval)
+        
+        with self.assertRaisesRegex(AssertionError, "Offer not available"):
+            # FIX: Removed environment argument
+            self.otc_contract.take_offer(signer=self.other_vk, listing_id=listing_id)
+
+    def test_07_take_offer_non_existent(self):
+        non_existent_id = "this_id_does_not_exist"
+        self._approve_transfer(self.token_b, self.taker_vk, self.otc_contract_name, Decimal("50")) # Approve some amount
+
+        with self.assertRaisesRegex(AssertionError, "Offer ID does not exist"): # CORRECTED Message
+            self.otc_contract.take_offer(signer=self.taker_vk, listing_id=non_existent_id, environment=self.environment)
+
+    def test_08_take_offer_insufficient_allowance(self):
+        offer_amount = Decimal("100.0")
+        take_amount = Decimal("50.0")
+        maker_fee = offer_amount / Decimal("100.0") * self.default_fee_percent
+        taker_fee = take_amount / Decimal("100.0") * self.default_fee_percent
+        maker_required_approval = offer_amount + maker_fee
+        taker_required_approval = take_amount + taker_fee
+
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, maker_required_approval)
+        listing_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=self.environment, # list_offer uses now
+            offer_token=self.token_a_name, offer_amount=offer_amount,
+            take_token=self.token_b_name, take_amount=take_amount)
+
+        self._approve_transfer(self.token_b, self.taker_vk, self.otc_contract_name, taker_required_approval - Decimal("1"))
+        
+        with self.assertRaisesRegex(AssertionError, "Transfer amount exceeds allowance"):
+            # FIX: Removed environment argument as take_offer contract method doesn't use now
+            self.otc_contract.take_offer(signer=self.taker_vk, listing_id=listing_id)
+
+    def test_09_take_offer_maker_is_taker(self):
+        offer_amount = Decimal("100.0")
+        take_amount = Decimal("50.0")
+        current_fee_percent = self.otc_contract.fee.get()
+        maker_fee = offer_amount / Decimal("100.0") * current_fee_percent
+        taker_fee_for_maker = take_amount / Decimal("100.0") * current_fee_percent
+        
+        maker_required_approval_for_listing = offer_amount + maker_fee
+
+        maker_initial_a_bal = self._get_balance_contracting_or_zero(self.token_a, self.maker_vk)
+        self._fund_account(self.token_b, self.maker_vk, take_amount + taker_fee_for_maker)
+        maker_initial_b_bal = self._get_balance_contracting_or_zero(self.token_b, self.maker_vk)
+
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, maker_required_approval_for_listing)
+        listing_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=self.environment, # list_offer uses now
+            offer_token=self.token_a_name, offer_amount=offer_amount,
+            take_token=self.token_b_name, take_amount=take_amount)
+        
+        maker_bal_a_after_list = self._get_balance_contracting_or_zero(self.token_a, self.maker_vk)
+        self.assertEqual(maker_bal_a_after_list, maker_initial_a_bal - maker_required_approval_for_listing)
+
+        maker_required_approval_for_taking = take_amount + taker_fee_for_maker
+        self._approve_transfer(self.token_b, self.maker_vk, self.otc_contract_name, maker_required_approval_for_taking)
+
+        # FIX: Removed environment argument as take_offer contract method doesn't use now
+        self.otc_contract.take_offer(signer=self.maker_vk, listing_id=listing_id)
+
+        offer = self.otc_contract.otc_listing[listing_id]
+        self.assertEqual(offer["status"], "EXECUTED")
+        self.assertEqual(offer["taker"], self.maker_vk)
+
+        expected_maker_final_a_bal = maker_initial_a_bal - maker_fee
+        expected_maker_final_b_bal = maker_initial_b_bal - taker_fee_for_maker
+        
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.maker_vk), expected_maker_final_a_bal)
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_b, self.maker_vk), expected_maker_final_b_bal)
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_a_name), maker_fee)
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_b_name), taker_fee_for_maker)
+
     def test_10_cancel_offer_happy_path(self):
         offer_amount = Decimal("100.0")
         take_amount = Decimal("50.0")
@@ -253,6 +345,71 @@ class TestOtcContract(unittest.TestCase):
         self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.maker_vk), maker_initial_balance)
         self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_contract_name), contract_initial_balance)
 
+    def test_11_cancel_offer_not_maker(self):
+        offer_amount = Decimal("75.0"); take_amount = Decimal("25.0")
+        maker_fee = offer_amount / Decimal("100.0") * self.default_fee_percent
+        required_approval = offer_amount + maker_fee
+
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, required_approval)
+        listing_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=self.environment, # list_offer uses now
+            offer_token=self.token_a_name, offer_amount=offer_amount,
+            take_token=self.token_b_name, take_amount=take_amount
+        )
+        offer_before_cancel_attempt = self.otc_contract.otc_listing[listing_id] 
+        maker_balance_after_list = self._get_balance_contracting_or_zero(self.token_a, self.maker_vk)
+        contract_balance_after_list = self._get_balance_contracting_or_zero(self.token_a, self.otc_contract_name)
+
+        # Attempt to cancel by taker_vk (not the maker)
+        with self.assertRaisesRegex(AssertionError, "Only maker can cancel offer"):
+            # FIX: Removed environment argument as cancel_offer contract method doesn't use now
+            self.otc_contract.cancel_offer(signer=self.taker_vk, listing_id=listing_id)
+
+        # Verify offer status and balances are unchanged
+        offer_after_cancel_attempt = self.otc_contract.otc_listing[listing_id]
+        self.assertEqual(offer_after_cancel_attempt["status"], "OPEN")
+        self.assertEqual(offer_after_cancel_attempt, offer_before_cancel_attempt)
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.maker_vk), maker_balance_after_list)
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_contract_name), contract_balance_after_list)
+
+    def test_12_cancel_offer_non_existent(self):
+        non_existent_id = "this_offer_does_not_exist_for_cancel"
+        with self.assertRaisesRegex(AssertionError, "Offer ID does not exist"):
+            self.otc_contract.cancel_offer(signer=self.maker_vk, listing_id=non_existent_id, environment=self.environment)
+
+    def test_13_cancel_offer_already_executed(self):
+        offer_amount = Decimal("60.0"); take_amount = Decimal("30.0")
+        maker_fee = offer_amount / Decimal("100.0") * self.default_fee_percent
+        taker_fee = take_amount / Decimal("100.0") * self.default_fee_percent
+        maker_required_approval = offer_amount + maker_fee
+        taker_required_approval = take_amount + taker_fee
+
+        # List offer
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, maker_required_approval)
+        listing_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=self.environment, # list_offer uses now
+            offer_token=self.token_a_name, offer_amount=offer_amount,
+            take_token=self.token_b_name, take_amount=take_amount
+        )
+        
+        # Take offer
+        self._approve_transfer(self.token_b, self.taker_vk, self.otc_contract_name, taker_required_approval)
+        # FIX: Removed environment argument as take_offer contract method doesn't use now
+        self.otc_contract.take_offer(signer=self.taker_vk, listing_id=listing_id)
+
+        offer_after_take = self.otc_contract.otc_listing[listing_id]
+        self.assertEqual(offer_after_take["status"], "EXECUTED")
+
+        # Attempt to cancel by maker after it's executed
+        with self.assertRaisesRegex(AssertionError, "Offer can not be cancelled"):
+            # FIX: Removed environment argument as cancel_offer contract method doesn't use now
+            self.otc_contract.cancel_offer(signer=self.maker_vk, listing_id=listing_id)
+
+        # Verify offer status remains EXECUTED
+        offer_after_cancel_attempt = self.otc_contract.otc_listing[listing_id]
+        self.assertEqual(offer_after_cancel_attempt["status"], "EXECUTED")
+        self.assertEqual(offer_after_cancel_attempt, offer_after_take)
+
     # Example for test_14
     def test_14_adjust_fee_happy_path(self):
         new_fee = Decimal("1.5")
@@ -266,6 +423,17 @@ class TestOtcContract(unittest.TestCase):
         self.otc_contract.adjust_fee(signer=self.otc_owner_vk, trading_fee=Decimal("10.0"))
         # FIX: Direct comparison
         self.assertEqual(self.otc_contract.fee.get(), Decimal("10.0"))
+
+    def test_15_adjust_fee_not_owner(self):
+        original_fee = self.otc_contract.fee.get()
+        new_fee = Decimal("2.0")
+        
+        with self.assertRaisesRegex(AssertionError, "Only owner can call this method!"): # CORRECTED message
+            self.otc_contract.adjust_fee(signer=self.maker_vk, trading_fee=new_fee) # Environment not needed
+        
+        self.assertEqual(self.otc_contract.fee.get(), original_fee) 
+        
+        self.assertEqual(self.otc_contract.fee.get(), original_fee) 
 
     def test_16_adjust_fee_invalid_value(self):
         # FIX: Update expected assertion message
@@ -307,7 +475,79 @@ class TestOtcContract(unittest.TestCase):
         self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_owner_vk), owner_initial_a_bal + maker_fee)
         self.assertEqual(self._get_balance_contracting_or_zero(self.token_b, self.otc_owner_vk), owner_initial_b_bal + taker_fee)
 
-    # Example for test_21
+    def test_18_withdraw_not_owner(self):
+        offer_amount = Decimal("10.0"); take_amount = Decimal("5.0")
+        maker_fee = offer_amount / Decimal("100.0") * self.default_fee_percent
+        taker_fee = take_amount / Decimal("100.0") * self.default_fee_percent
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, offer_amount + maker_fee)
+        l_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=self.environment, # list_offer uses now
+            offer_token=self.token_a_name, offer_amount=offer_amount, 
+            take_token=self.token_b_name, take_amount=take_amount
+        )
+        self._approve_transfer(self.token_b, self.taker_vk, self.otc_contract_name, take_amount + taker_fee)
+        # FIX: Removed environment argument as take_offer contract method doesn't use now
+        self.otc_contract.take_offer(signer=self.taker_vk, listing_id=l_id)
+
+        contract_earned_a_before = self.otc_contract.view_earned_fees(token=self.token_a_name)
+        maker_bal_a_before = self._get_balance_contracting_or_zero(self.token_a, self.maker_vk)
+        self.assertEqual(contract_earned_a_before, maker_fee)
+
+        with self.assertRaisesRegex(AssertionError, "Only owner can call this method!"):
+            self.otc_contract.withdraw(signer=self.maker_vk, token_list=[self.token_a_name])
+        
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_a_name), contract_earned_a_before)
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.maker_vk), maker_bal_a_before)
+
+
+    def test_19_withdraw_no_fees_to_withdraw(self):
+        owner_initial_a_bal = self._get_balance_contracting_or_zero(self.token_a, self.otc_owner_vk)
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_a_name), Decimal("0.0"))
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_contract_name), Decimal("0.0"))
+
+        self.otc_contract.withdraw(signer=self.otc_owner_vk, token_list=[self.token_a_name], environment=self.environment)
+
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_owner_vk), owner_initial_a_bal)
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_a_name), Decimal("0.0"))
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_contract_name), Decimal("0.0"))
+
+
+    def test_20_withdraw_unknown_token_or_no_fees_for_specific_token(self):
+        offer_amount_a = Decimal("100.0"); take_amount_b = Decimal("50.0")
+        maker_fee_a = offer_amount_a / Decimal("100.0") * self.default_fee_percent
+        taker_fee_b = take_amount_b / Decimal("100.0") * self.default_fee_percent
+
+        self._approve_transfer(self.token_a, self.maker_vk, self.otc_contract_name, offer_amount_a + maker_fee_a)
+        
+        # list_offer uses now from environment
+        list_env = {"chain_id": "test-chain", "now": Datetime(year=2024, month=8, day=1, microsecond=1)}
+        
+        l_id = self.otc_contract.list_offer(
+            signer=self.maker_vk, environment=list_env, 
+            offer_token=self.token_a_name, offer_amount=offer_amount_a, 
+            take_token=self.token_b_name, take_amount=take_amount_b
+        )
+        self._approve_transfer(self.token_b, self.taker_vk, self.otc_contract_name, take_amount_b + taker_fee_b)
+        
+        # take_offer does not use now from environment in the contract
+        self.otc_contract.take_offer(signer=self.taker_vk, listing_id=l_id)
+
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_a_name), maker_fee_a)
+        # Ensure self.token_c_name is defined in your class TestOtcContract
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_c_name), Decimal("0.0"))
+
+        owner_initial_a_bal = self._get_balance_contracting_or_zero(self.token_a, self.otc_owner_vk)
+
+        # Ensure self.token_c_name is defined in your class TestOtcContract
+        self.otc_contract.withdraw(signer=self.otc_owner_vk, token_list=[self.token_a_name, self.token_c_name])
+
+        self.assertEqual(self._get_balance_contracting_or_zero(self.token_a, self.otc_owner_vk), owner_initial_a_bal + maker_fee_a)
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_a_name), Decimal("0.0"))
+        # Ensure self.token_c_name is defined in your class TestOtcContract
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_c_name), Decimal("0.0"))
+        self.assertEqual(self.otc_contract.view_earned_fees(token=self.token_b_name), taker_fee_b)
+
+
     def test_21_withdraw_cannot_take_escrowed_funds(self):
         # --- Phase 1: Generate some initial earned fees ---
         fee_offer_token = self.token_a_name
