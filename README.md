@@ -50,16 +50,56 @@ A simple, mobile-friendly Over-The-Counter (OTC) exchange web interface built wi
 
 ## Configuration
 
-Before running, verify the settings in `src/lib/config.js`. Ensure these match the target environment and deployed smart contracts:
+The application's network-specific configurations are managed in `src/lib/config.js`. The system automatically selects the appropriate settings based on the chosen network (Testnet or Mainnet).
 
-*   `otcContract`: The address of the main OTC smart contract.
-*   `masterContract`: (If used by your setup, verify).
-*   `networkType`: Should be `"testnet"`.
-*   `currencySymbol`: e.g., `"XIAN"`.
-*   `blockExplorer`: URL for the Testnet explorer.
-*   `masternode`: RPC URL for the Testnet.
-*   `graphqlEndpoint`: GraphQL endpoint URL for the Testnet.
-*   `otcFeePercentage`: **Crucial.** The fee percentage (e.g., `0.005` for 0.5%) charged by the `otcContract`. This *must* match the contract's fee for approval amounts to be calculated correctly.
+The following configurations are defined:
+
+1.  **OTC Contract Name**
+    *   **Purpose**: The smart contract name used for OTC operations.
+    *   **File**: `src/lib/config.js`
+    *   **Variable**: `config.otcContract`
+    *   **Getter Function**: `getOtcContract()`
+    *   **Values**:
+        *   Testnet: `con_otc`
+        *   Mainnet: `con_otc`
+
+2.  **OTC Fee Percentage**
+    *   **Purpose**: The percentage fee applied to OTC trades.
+    *   **File**: `src/lib/config.js`
+    *   **Variable**: `config.otcFeePercentage`
+    *   **Getter Function**: `getOtcFeePercentage()`
+    *   **Values**:
+        *   Testnet: `0.005` (representing 0.5%)
+        *   Mainnet: `0.005` (representing 0.5%)
+
+3.  **Masternode RPC URL**
+    *   **Purpose**: The RPC endpoint URL for interacting with the Xian blockchain. This is used by `XianWalletUtils` for sending transactions and querying blockchain data.
+    *   **File**: `src/lib/config.js`
+    *   **Variable**: `config.masternode`
+    *   **Getter Function**: `getMasterNode()`
+    *   **Values**:
+        *   Testnet: `https://testnet.xian.org`
+        *   Mainnet: `https://node.xian.org`
+
+4.  **GraphQL Endpoint**
+    *   **Purpose**: The URL for the GraphQL API, used for querying blockchain state (e.g., fetching open offers).
+    *   **File**: `src/lib/config.js`
+    *   **Variable**: `config.graphqlEndpoint`
+    *   **Getter Function**: `getGraphqlEndpoint()`
+    *   **Values**:
+        *   Testnet: `https://testnet.xian.org/graphql`
+        *   Mainnet: `https://node.xian.org/graphql`
+
+5.  **WebSocket URL**
+    *   **Purpose**: The URL for the WebSocket API, used for real-time communication and event subscriptions from the Xian network.
+    *   **File**: `src/lib/config.js`
+    *   **Variable**: `config.webSocketUrl`
+    *   **Getter Function**: `getWebSocketUrl()`
+    *   **Values**:
+        *   Testnet: `https://testnet.xian.org/websocket`
+        *   Mainnet: `https://node.xian.org/websocket`
+
+The active network (and thus the configuration set used) is determined by the `networkType` Svelte store (see `src/lib/store.js`). This store is initialized, for example, in `src/routes/+layout.svelte` where `XianWalletUtils.init(getMasterNode())` implicitly uses the network setting to fetch the correct Masternode URL. The various getter functions (`getOtcContract()`, `getMasterNode()`, etc.) in `src/lib/config.js` retrieve the correct values based on the current value of the `networkType` store.
 
 ## Running the Application
 
@@ -104,4 +144,4 @@ Contributions are welcome! Please feel free to submit issues or pull requests. (
 
 ## License
 
-(Specify your license here, e.g., MIT License) or state "This project is unlicensed."
+MIT License
