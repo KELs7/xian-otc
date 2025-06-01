@@ -2,7 +2,7 @@
     import { page } from '$app/stores';
     import XianWalletUtils from '$lib/xianDappUtils.mjs';
     import { getMasterNode } from '$lib/config';
-    import { walletAddressElementValue } from "$lib/store";
+    import { walletAddressElementValue, currentUserFullAddress } from "$lib/store";
     import { handleWalletError, handleWalletInfo } from '$lib/walletUtils';
     import { onMount, setContext } from "svelte";
     
@@ -25,22 +25,29 @@
             const info = await XianWalletUtils.requestWalletInfo();
             handleWalletInfo(info);
 
-            if (info && !info.locked) {
-                XianWalletUtils.getBalance("currency")
-                    .then(balance => {
-                        const numericBalance = parseFloat(balance);
-                        xianBalance = isNaN(numericBalance) ? 0 : numericBalance;
-                    })
-                    .catch(error => {
-                        console.error("Error fetching balance:", error);
-                        xianBalance = 0; 
-                    });
+            if (info && info.address) { // Check if info and info.address exist
+                currentUserFullAddress.set(info.address); // Set the full address
+                if (!info.locked) {
+                    XianWalletUtils.getBalance("currency")
+                        .then(balance => {
+                            const numericBalance = parseFloat(balance);
+                            xianBalance = isNaN(numericBalance) ? 0 : numericBalance;
+                        })
+                        .catch(error => {
+                            console.error("Error fetching balance:", error);
+                            xianBalance = 0; 
+                        });
+                } else {
+                    xianBalance = 0;
+                }
             } else {
+                currentUserFullAddress.set(null); // Explicitly set to null if no address
                 xianBalance = 0;
             }
 
         } catch (error) {
             handleWalletError(error);
+            currentUserFullAddress.set(null); // Explicitly set to null on error
             xianBalance = 0; 
         }
 

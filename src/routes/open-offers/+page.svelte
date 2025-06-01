@@ -1,6 +1,6 @@
 <script>
     import Modal from '$lib/components/Modal.svelte';
-    import { transactionInfo } from '$lib/store';
+    import { transactionInfo, currentUserFullAddress } from '$lib/store'; // Import currentUserFullAddress
     import { handleTransaction, handleTransactionError } from '$lib/walletUtils';
     import { getOtcContract, getOtcFeePercentage } from '$lib/config'; 
     import { onMount, getContext } from 'svelte';
@@ -11,10 +11,19 @@
 
     let paginatedOffers = [];
     let selectedOffer = null;
-    let showTakeModal = false;
     let loading = true; // For loading offers list
     let errorLoading = null;
-    let isTakingOffer = false; // New state for "Take Offer" processing
+    
+    // Modal related states
+    let showModal = false;
+    let modalTitle = "";
+    let modalMessage = "";
+    let modalConfirmHandler = () => {};
+    let modalConfirmButtonBusy = false;
+
+    // Action specific states
+    let isTakingOffer = false; 
+    let isCancellingOffer = false;
 
     const itemsPerPage = 25;
     let currentPage = 1;
@@ -54,21 +63,40 @@
 
     function handleTakeOfferClick(offer) {
         if (!offer || !offer.id || !offer.take_token || offer.take_amount == null) {
-            console.error("Invalid offer data selected:", offer);
+            console.error("Invalid offer data selected for taking:", offer);
             handleTransactionError("Cannot take offer: Invalid offer data.");
             return;
         }
         selectedOffer = offer;
-        transactionInfo.set({});
-        showTakeModal = true;
+        transactionInfo.set({}); // Clear previous transaction info
+
+        modalTitle = "Confirm Offer Take";
+        modalMessage = "Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] Take the offer.";
+        modalConfirmHandler = handleTakeConfirm;
+        showModal = true;
     }
 
+    function handleCancelOfferClick(offer) {
+        if (!offer || !offer.id) {
+            console.error("Invalid offer data selected for cancelling:", offer);
+            handleTransactionError("Cannot cancel offer: Invalid offer data.");
+            return;
+        }
+        selectedOffer = offer;
+        transactionInfo.set({}); // Clear previous transaction info
+
+        modalTitle = "Confirm Offer Cancellation";
+        modalMessage = "Are you sure you want to cancel this offer? This action is irreversible. A single popup will appear for confirmation.";
+        modalConfirmHandler = handleCancelConfirm;
+        showModal = true;
+    }
+
+
     function handleCloseModal() {
-        showTakeModal = false;
+        showModal = false;
         selectedOffer = null;
         transactionInfo.set({});
-        // isTakingOffer should be reset if modal is closed prematurely, 
-        // but primarily handled in handleTakeConfirm's finally block.
+        // isTakingOffer and isCancellingOffer are reset in their respective confirm handlers' finally blocks.
     }
 
     async function handleTakeConfirm() {
@@ -79,7 +107,7 @@
             return;
         }
 
-        isTakingOffer = true; // Set loading state for modal confirm button
+        isTakingOffer = true; 
         console.log(`Confirmed taking offer ${selectedOffer.id}. Initiating approve and take sequence...`);
 
         try {
@@ -125,9 +153,11 @@
 
              if (approveResponse && approveResponse.errors) {
                  console.error('Approve transaction failed immediately:', approveResponse.errors);
-                 handleTransaction(approveResponse);
+                 handleTransaction(approveResponse); // Show toast for error
+                 // Do not proceed if approval fails
+                 throw new Error('Approval transaction failed.'); 
              } else {
-                handleTransaction(approveResponse);
+                handleTransaction(approveResponse); // Show toast for success/submission
              }
 
             console.log("Waiting 500 milliseconds before sending take_offer...");
@@ -155,22 +185,75 @@
                  throw err; 
             });
 
-             if (takeOfferResponse && takeOfferResponse.errors) {
+            if (takeOfferResponse && takeOfferResponse.errors) {
                  console.error('Take Offer transaction failed immediately:', takeOfferResponse.errors);
-             }
+            }
             handleTransaction(takeOfferResponse);
 
 
         } catch (error) {
             console.error("Error during take offer transaction sequence:", error);
-            // Error already handled by handleTransactionError or specific toasts
+            // Error already handled by handleTransactionError or specific toasts if it's a re-thrown error
+            // If it's a new error from this block, it will be caught by the generic console log.
         } finally {
             console.log("Cleaning up after take offer attempt.");
-            isTakingOffer = false; // Reset loading state
+            isTakingOffer = false; 
             handleCloseModal(); 
             await loadOffers(currentPage); 
         }
     }
+
+    async function handleCancelConfirm() {
+        if (!selectedOffer) {
+            console.error("handleCancelConfirm called without a selected offer.");
+            handleTransactionError("No offer selected for cancellation. Please try again.");
+            handleCloseModal();
+            return;
+        }
+
+        isCancellingOffer = true;
+        console.log(`Confirmed cancelling offer ${selectedOffer.id}. Initiating cancel transaction...`);
+
+        try {
+            const otcContract = getOtcContract();
+            const cancelOfferTxData = {
+                method: "cancel_offer",
+                kwargs: {
+                    listing_id: selectedOffer.id
+                }
+            };
+            transactionInfo.set(cancelOfferTxData);
+
+            console.log("Sending Cancel Offer Tx:", {
+                contract: otcContract,
+                data: $transactionInfo
+            });
+
+            const cancelOfferResponse = await xdu().sendTransaction(
+                otcContract,
+                $transactionInfo.method,
+                $transactionInfo.kwargs
+            ).catch(err => {
+                handleTransactionError(err);
+                throw err; // Re-throw to be caught by the outer catch and trigger finally
+            });
+            
+            if (cancelOfferResponse && cancelOfferResponse.errors) {
+                console.error('Cancel Offer transaction failed immediately:', cancelOfferResponse.errors);
+            }
+            handleTransaction(cancelOfferResponse); // Process response (success or error message)
+
+        } catch (error) {
+            console.error("Error during cancel offer transaction:", error);
+            // Specific errors might have been handled by handleTransactionError already
+        } finally {
+            console.log("Cleaning up after cancel offer attempt.");
+            isCancellingOffer = false;
+            handleCloseModal();
+            await loadOffers(currentPage); // Refresh the list of offers
+        }
+    }
+
 
     function goToPage(pageNumber) {
         if (pageNumber >= 1) {
@@ -202,6 +285,8 @@
         });
     }
 
+    $: modalConfirmButtonBusy = isTakingOffer || isCancellingOffer;
+
 </script>
 
 <svelte:head>
@@ -211,11 +296,11 @@
 <div class="offers-container">
     <h1>Open Offers</h1>
 
-    {#if loading && paginatedOffers.length === 0} <!-- Show loading only if no offers are yet displayed -->
+    {#if loading && paginatedOffers.length === 0} 
         <p class="loading-message">Loading offers...</p>
     {:else if errorLoading}
         <p class="error-message">{errorLoading}</p>
-    {:else if paginatedOffers.length === 0 && !loading} <!-- Ensure loading is false before showing no offers -->
+    {:else if paginatedOffers.length === 0 && !loading} 
         <p>No open offers found.</p>
     {:else}
         <div class="offers-list">
@@ -229,20 +314,39 @@
                          <p class="fee-info">Fee: {offer.fee !== undefined ? offer.fee + '%' : 'N/A'}</p>
                     </div>
                     <div class="offer-action">
-                        <button on:click={() => handleTakeOfferClick(offer)} disabled={isTakingOffer || loading}>
-                            Take this offer
-                        </button>
+                        {#if $currentUserFullAddress && offer.maker === $currentUserFullAddress}
+                            <button 
+                                on:click={() => handleCancelOfferClick(offer)} 
+                                disabled={isCancellingOffer || isTakingOffer || loading}
+                                class="button-cancel">
+                                {#if isCancellingOffer}
+                                    Processing...
+                                {:else}
+                                    Cancel Offer
+                                {/if}
+                            </button>
+                        {:else}
+                            <button 
+                                on:click={() => handleTakeOfferClick(offer)} 
+                                disabled={isTakingOffer || isCancellingOffer || loading}>
+                                {#if isTakingOffer}
+                                    Processing...
+                                {:else}
+                                    Take this offer
+                                {/if}
+                            </button>
+                        {/if}
                     </div>
                 </div>
             {/each}
         </div>
 
         <div class="pagination">
-            <button disabled={currentPage <= 1 || loading || isTakingOffer} on:click={() => goToPage(currentPage - 1)}>
+            <button disabled={currentPage <= 1 || loading || isTakingOffer || isCancellingOffer} on:click={() => goToPage(currentPage - 1)}>
                 « Previous
             </button>
             <span>Page {currentPage} {#if loading && paginatedOffers.length > 0}(Updating...){/if}</span>
-            <button disabled={!hasMorePages || loading || isTakingOffer} on:click={() => goToPage(currentPage + 1)}>
+            <button disabled={!hasMorePages || loading || isTakingOffer || isCancellingOffer} on:click={() => goToPage(currentPage + 1)}>
                 Next »
             </button>
         </div>
@@ -250,12 +354,12 @@
 </div>
 
 <Modal
-    bind:show={showTakeModal}
-    title="Confirm Offer Take"
-    message="Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] Take the offer."
-    on:confirm={handleTakeConfirm}
+    bind:show={showModal}
+    title={modalTitle}
+    message={modalMessage}
+    on:confirm={modalConfirmHandler}
     on:close={handleCloseModal}
-    confirmButtonBusy={isTakingOffer}
+    confirmButtonBusy={modalConfirmButtonBusy}
 />
 
 
@@ -273,6 +377,20 @@
     .offer-id strong { color: #555; }
     .offer-action { margin-top: 1rem; text-align: right; }
     .offer-action button { padding: 0.5rem 1rem; font-size: 0.95rem; }
+    /* Style for Cancel button to differentiate if needed, e.g., red color */
+    .offer-action button.button-cancel {
+        background-color: #dc3545; /* Example: Bootstrap danger red */
+        border-color: #dc3545;
+    }
+    .offer-action button.button-cancel:hover:not(:disabled) {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+     .offer-action button.button-cancel:disabled {
+        background-color: #f0a0a8; /* Lighter red for disabled cancel */
+        border-color: #f0a0a8;
+    }
+
     .pagination { display: flex; justify-content: center; align-items: center; margin-top: 2rem; gap: 1rem; }
     .pagination span { font-size: 0.95rem; color: #555; }
     .pagination button { padding: 0.4rem 0.8rem; }
