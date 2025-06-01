@@ -2,7 +2,7 @@
     import { page } from '$app/stores';
     import XianWalletUtils from '$lib/xianDappUtils.mjs';
     import { getMasterNode } from '$lib/config';
-    import { walletAddressElementValue, currentUserFullAddress } from "$lib/store";
+    import { walletAddressElementValue, currentUserFullAddress } from "$lib/store"; 
     import { handleWalletError, handleWalletInfo } from '$lib/walletUtils';
     import { onMount, setContext } from "svelte";
     
@@ -25,8 +25,8 @@
             const info = await XianWalletUtils.requestWalletInfo();
             handleWalletInfo(info);
 
-            if (info && info.address) { // Check if info and info.address exist
-                currentUserFullAddress.set(info.address); // Set the full address
+            if (info && info.address) { 
+                currentUserFullAddress.set(info.address); 
                 if (!info.locked) {
                     XianWalletUtils.getBalance("currency")
                         .then(balance => {
@@ -41,13 +41,13 @@
                     xianBalance = 0;
                 }
             } else {
-                currentUserFullAddress.set(null); // Explicitly set to null if no address
+                currentUserFullAddress.set(null); 
                 xianBalance = 0;
             }
 
         } catch (error) {
             handleWalletError(error);
-            currentUserFullAddress.set(null); // Explicitly set to null on error
+            currentUserFullAddress.set(null); 
             xianBalance = 0; 
         }
 
@@ -63,7 +63,18 @@
 
 <div class="app-container">
     <header class="app-header">
-        <div class="logo">OTC</div>
+        <div class="header-left-section"> 
+            <div class="logo">OTC</div>
+            <nav class="main-nav"> 
+                <a href="/open-offers" class:active={activePath === '/' || activePath === '/open-offers'}>
+                    <span>Open Offers</span> 
+                </a>
+                <a href="/create-offer" class:active={activePath === '/create-offer'}>
+                    <span>Create Offer</span> 
+                </a>
+            </nav>
+        </div>
+        
         {#if $walletAddressElementValue}
             <div class="wallet-balance">
                 {$walletAddressElementValue} | {xianBalance.toLocaleString()} 
@@ -74,15 +85,6 @@
             </div>
         {/if}
     </header>
-
-    <nav class="tabs">
-        <a href="/open-offers" class:active={activePath === '/' || activePath === '/open-offers'}>
-            Open Offers
-        </a>
-        <a href="/create-offer" class:active={activePath === '/create-offer'}>
-            Create Offer
-        </a>
-    </nav>
 
     <main class="main-content">
         <slot />
@@ -106,15 +108,25 @@
 
     .app-header {
         display: flex;
-        justify-content: space-between;
+        justify-content: space-between; 
         align-items: center;
         padding: 1rem 0;
         border-bottom: 1px solid #eee;
+        gap: 1rem; /* Adds some space between flex items, helps with responsiveness */
+    }
+
+    .header-left-section { 
+        display: flex;
+        align-items: center;
+        min-width: 0; /* Allow this section to shrink if nav items are too wide */
+        flex-shrink: 1; /* Allow shrinking, higher value means it shrinks more readily */
     }
 
     .logo {
         font-size: 1.8rem;
         font-weight: bold;
+        margin-right: 1rem; /* Slightly reduced margin */
+        flex-shrink: 0; /* Logo should not shrink */
     }
 
     .wallet-balance {
@@ -123,38 +135,63 @@
         border-radius: 4px;
         font-size: 0.9rem;
         color: #333;
+        /* white-space: nowrap; */ /* Removed to allow wrapping */
+        min-width: 0; /* Allow this to shrink */
+        flex-shrink: 1; /* Allow shrinking */
+        text-align: right; /* Align text to right if it wraps */
+        overflow-wrap: break-word; /* Helps break long words/numbers if necessary */
     }
 
-    .tabs {
+    .main-nav { 
         display: flex;
-        margin: 1.5rem 0;
-        border-bottom: 2px solid #eee;
+        min-width: 0; /* Allow nav itself to shrink if its content is too wide */
+        flex-shrink: 1; /* Allow nav to shrink */
     }
 
-    .tabs a {
-        padding: 0.8rem 1.5rem;
+    .main-nav a { 
+        padding: 0.8rem 1rem; /* Slightly reduced horizontal padding */
         text-decoration: none;
         color: #555;
         font-weight: 500;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px; 
-        transition: color 0.2s ease, border-color 0.2s ease;
+        border-bottom: 3px solid transparent; 
+        transition: color 0.2s ease; 
         text-align: center;
-        flex-grow: 1; 
+        white-space: nowrap; 
+        position: relative; 
     }
 
-    .tabs a:hover {
+    .main-nav a span {
+        position: relative; 
+        display: inline-block; 
+    }
+
+    .main-nav a:not(:last-child) {
+        margin-right: 0.25rem; /* Slightly reduced margin */
+    }
+
+    .main-nav a:hover { 
+        color: #007bff;
+        text-decoration: none; 
+    }
+
+    .main-nav a.active { 
         color: #007bff;
     }
 
-    .tabs a.active {
-        color: #007bff;
-        border-bottom-color: #007bff;
+    .main-nav a.active span::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        width: 100%; 
+        height: 3px;
+        background-color: #007bff;
+        top: calc(100% + 0.8rem); 
     }
+
 
     .main-content {
         flex-grow: 1; 
-        padding: 1rem 0;
+        padding: 1.5rem 0; 
     }
 
     .app-footer {
@@ -208,6 +245,28 @@
         margin-bottom: 0.5rem;
         font-weight: 500;
         color: #333;
+    }
+
+    /* Responsive adjustments for smaller screens */
+    @media (max-width: 600px) {
+        .logo {
+            font-size: 1.5rem; /* Smaller logo */
+            margin-right: 0.5rem;
+        }
+        .main-nav a {
+            padding: 0.8rem 0.5rem; /* Less horizontal padding for nav links */
+            font-size: 0.9rem; /* Slightly smaller font for nav links */
+        }
+        .main-nav a.active span::after {
+             top: calc(100% + 0.8rem); /* Ensure underline position is consistent with padding */
+        }
+        .wallet-balance {
+            font-size: 0.8rem; /* Smaller font for wallet info */
+            padding: 0.4rem 0.6rem;
+        }
+        .app-header {
+            gap: 0.5rem; /* Reduce gap on smaller screens */
+        }
     }
 
 </style>
