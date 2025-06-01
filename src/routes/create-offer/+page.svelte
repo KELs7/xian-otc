@@ -15,7 +15,7 @@
 
     let showListModal = false;
     let formError = '';
-    let isListingOffer = false; // New state for "List Offer" processing
+    let isListingOffer = false; 
 
     $: formValid =
         (offerTokenName.trim().startsWith('con_') || offerTokenName.trim() === 'currency') &&
@@ -64,7 +64,7 @@
     }
 
     async function handleListConfirm() {
-        isListingOffer = true; // Set loading state for modal confirm button
+        isListingOffer = true; 
         console.log("Confirmed listing. Initiating approve and list sequence...");
 
         let approvalSent = false;
@@ -113,6 +113,7 @@
             if (approveResponse && approveResponse.errors) {
                  console.error('Approve transaction failed immediately:', approveResponse.errors);
                  handleTransaction(approveResponse);
+                 throw new Error('Approval transaction failed.'); // Stop if approval fails
             } else {
                 handleTransaction(approveResponse);
             }
@@ -153,7 +154,7 @@
         } catch (error) {
             console.error("Error during transaction sequence:", error);
         } finally {
-            isListingOffer = false; // Reset loading state
+            isListingOffer = false; 
             console.log("Cleaning up form and closing modal.");
             offerTokenName = '';
             offerAmount = null;
@@ -161,7 +162,9 @@
             takeAmount = null;
             formError = '';
             handleCloseModal();
-            goto('/open-offers');
+            if (!approvalSent || (transactionInfo && $transactionInfo.method === "list_offer" && !($transactionInfo.errors))) { // Only redirect if list offer was successful or approval failed before list
+                goto('/open-offers');
+            }
         }
     }
 
@@ -172,11 +175,16 @@
 </svelte:head>
 
 <div class="create-offer-container">
-    <h1>Create New Offer</h1>
+    <p class="page-description">
+        Use this form to create a new Over-The-Counter (OTC) offer. You specify which token you are offering,
+        how much of it, which token you want in return (take token), and how much of the take token you require.
+        Listing an offer involves two transactions: approving the OTC contract to handle your offered tokens,
+        and then submitting the offer details to the contract.
+    </p>
 
     <form on:submit|preventDefault={validateAndShowModal}>
         <div class="form-group">
-            <label for="offer-token">Offering Token Name (e.g., con_rswp_token)</label>
+            <label for="offer-token">Offering Token Name (e.g., con_rswp_token or currency)</label>
             <input
                 id="offer-token"
                 type="text"
@@ -204,7 +212,7 @@
         <hr class="form-divider"/>
 
         <div class="form-group">
-            <label for="take-token">Requesting Token Name (e.g., con_usdt_token)</label>
+            <label for="take-token">Requesting Token Name (e.g., con_usdt_token or currency)</label>
             <input
                 id="take-token"
                 type="text"
@@ -264,7 +272,18 @@
 
     h1 {
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 0.5rem; /* Adjusted margin */
+    }
+
+    .page-description {
+        text-align: center;
+        margin-bottom: 2rem; /* Increased margin to space from form */
+        font-size: 0.95rem;
+        color: #555;
+        max-width: 550px; /* Constrain width for better readability */
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
     }
 
     .form-group {

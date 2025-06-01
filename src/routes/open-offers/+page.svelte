@@ -1,6 +1,6 @@
 <script>
     import Modal from '$lib/components/Modal.svelte';
-    import { transactionInfo, currentUserFullAddress } from '$lib/store'; // Import currentUserFullAddress
+    import { transactionInfo, currentUserFullAddress } from '$lib/store'; 
     import { handleTransaction, handleTransactionError } from '$lib/walletUtils';
     import { getOtcContract, getOtcFeePercentage } from '$lib/config'; 
     import { onMount, getContext } from 'svelte';
@@ -11,17 +11,15 @@
 
     let paginatedOffers = [];
     let selectedOffer = null;
-    let loading = true; // For loading offers list
+    let loading = true; 
     let errorLoading = null;
     
-    // Modal related states
     let showModal = false;
     let modalTitle = "";
     let modalMessage = "";
     let modalConfirmHandler = () => {};
     let modalConfirmButtonBusy = false;
 
-    // Action specific states
     let isTakingOffer = false; 
     let isCancellingOffer = false;
 
@@ -68,7 +66,7 @@
             return;
         }
         selectedOffer = offer;
-        transactionInfo.set({}); // Clear previous transaction info
+        transactionInfo.set({}); 
 
         modalTitle = "Confirm Offer Take";
         modalMessage = "Two popup windows will show up when you press 'continue'. PATIENTLY WAIT and accept each one: [1] Give OTC contract approval [2] Take the offer.";
@@ -83,7 +81,7 @@
             return;
         }
         selectedOffer = offer;
-        transactionInfo.set({}); // Clear previous transaction info
+        transactionInfo.set({}); 
 
         modalTitle = "Confirm Offer Cancellation";
         modalMessage = "Are you sure you want to cancel this offer? This action is irreversible. A single popup will appear for confirmation.";
@@ -96,7 +94,6 @@
         showModal = false;
         selectedOffer = null;
         transactionInfo.set({});
-        // isTakingOffer and isCancellingOffer are reset in their respective confirm handlers' finally blocks.
     }
 
     async function handleTakeConfirm() {
@@ -153,11 +150,10 @@
 
              if (approveResponse && approveResponse.errors) {
                  console.error('Approve transaction failed immediately:', approveResponse.errors);
-                 handleTransaction(approveResponse); // Show toast for error
-                 // Do not proceed if approval fails
+                 handleTransaction(approveResponse); 
                  throw new Error('Approval transaction failed.'); 
              } else {
-                handleTransaction(approveResponse); // Show toast for success/submission
+                handleTransaction(approveResponse); 
              }
 
             console.log("Waiting 500 milliseconds before sending take_offer...");
@@ -193,8 +189,6 @@
 
         } catch (error) {
             console.error("Error during take offer transaction sequence:", error);
-            // Error already handled by handleTransactionError or specific toasts if it's a re-thrown error
-            // If it's a new error from this block, it will be caught by the generic console log.
         } finally {
             console.log("Cleaning up after take offer attempt.");
             isTakingOffer = false; 
@@ -235,22 +229,21 @@
                 $transactionInfo.kwargs
             ).catch(err => {
                 handleTransactionError(err);
-                throw err; // Re-throw to be caught by the outer catch and trigger finally
+                throw err; 
             });
             
             if (cancelOfferResponse && cancelOfferResponse.errors) {
                 console.error('Cancel Offer transaction failed immediately:', cancelOfferResponse.errors);
             }
-            handleTransaction(cancelOfferResponse); // Process response (success or error message)
+            handleTransaction(cancelOfferResponse); 
 
         } catch (error) {
             console.error("Error during cancel offer transaction:", error);
-            // Specific errors might have been handled by handleTransactionError already
         } finally {
             console.log("Cleaning up after cancel offer attempt.");
             isCancellingOffer = false;
             handleCloseModal();
-            await loadOffers(currentPage); // Refresh the list of offers
+            await loadOffers(currentPage); 
         }
     }
 
@@ -294,7 +287,11 @@
 </svelte:head>
 
 <div class="offers-container">
-    <h1>Open Offers</h1>
+    <p class="page-description">
+        Browse all currently available Over-The-Counter (OTC) offers. You can take an offer if you agree with the terms,
+        or cancel an offer if you are the original creator (maker) of that offer.
+        Taking an offer involves approving the token you will send and then executing the exchange.
+    </p>
 
     {#if loading && paginatedOffers.length === 0} 
         <p class="loading-message">Loading offers...</p>
@@ -365,7 +362,18 @@
 
 <style>
     .offers-container { }
-    h1 { margin-bottom: 1.5rem; text-align: center; }
+    h1 { margin-bottom: 0.5rem; text-align: center; } /* Adjusted margin */
+    .page-description {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+        color: #555;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+    }
     .offers-list { display: grid; gap: 1rem; }
     .offer-item { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: box-shadow 0.2s ease; }
     .offer-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -377,9 +385,8 @@
     .offer-id strong { color: #555; }
     .offer-action { margin-top: 1rem; text-align: right; }
     .offer-action button { padding: 0.5rem 1rem; font-size: 0.95rem; }
-    /* Style for Cancel button to differentiate if needed, e.g., red color */
     .offer-action button.button-cancel {
-        background-color: #dc3545; /* Example: Bootstrap danger red */
+        background-color: #dc3545; 
         border-color: #dc3545;
     }
     .offer-action button.button-cancel:hover:not(:disabled) {
@@ -387,7 +394,7 @@
         border-color: #bd2130;
     }
      .offer-action button.button-cancel:disabled {
-        background-color: #f0a0a8; /* Lighter red for disabled cancel */
+        background-color: #f0a0a8; 
         border-color: #f0a0a8;
     }
 
