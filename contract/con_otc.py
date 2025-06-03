@@ -24,6 +24,7 @@ OfferEvent = LogEvent(
         "offer_amount": {'type':(int, float, decimal)},
         "take_token": {'type':str, 'idx':False},
         "take_amount": {'type':(int, float, decimal)},
+        "date_listed": {'type':str, 'idx':False},
         "fee": {'type':(int, float, decimal)},
         "status": {'type':str, 'idx':True}
     })
@@ -38,6 +39,7 @@ TakeOfferEvent = LogEvent(
         "offer_amount": {'type':(int, float, decimal)},
         "take_token": {'type':str, 'idx':False},
         "take_amount": {'type':(int, float, decimal)},
+        "date_taken": {'type':str, 'idx':False},
         "fee": {'type':(int, float, decimal)},
         "status": {'type':str, 'idx':True}
     })
@@ -52,6 +54,7 @@ CancelOfferEvent = LogEvent(
         "offer_amount": {'type':(int, float, decimal)},
         "take_token": {'type':str, 'idx':False},
         "take_amount": {'type':(int, float, decimal)},
+        "date_cancelled": {'type':str, 'idx':False},
         "fee": {'type':(int, float, decimal)},
         "status": {'type':str, 'idx':True}
     })
@@ -72,7 +75,8 @@ def list_offer(
 ):
     assert offer_amount > decimal("0.0"), "Offer amount must be positive"
     assert take_amount > decimal("0.0"), "Take amount must be positive"
-    listing_id = hashlib.sha256(str(now) + str(random.randrange(99)))
+    current_date = now
+    listing_id = hashlib.sha256(str(current_date) + str(random.randrange(99)))
     assert not otc_listing[listing_id], "Generated ID not unique. Try again"
     maker_fee = offer_amount / 100 * fee.get()
     offer_token_contract = I.import_module(offer_token)
@@ -93,6 +97,7 @@ def list_offer(
         "offer_amount": offer_amount,
         "take_token": take_token,
         "take_amount": take_amount,
+        "date_listed": current_date,
         "fee": fee.get(),
         "status": "OPEN",
     }
@@ -105,6 +110,7 @@ def list_offer(
         "offer_amount": offer_amount,
         "take_token": take_token,
         "take_amount": take_amount,
+        "date_listed": str(current_date),
         "fee": fee.get(),
         "status": "OPEN",
     })
@@ -154,6 +160,7 @@ def take_offer(listing_id: str):
         "offer_amount": offer["offer_amount"],
         "take_token": offer["take_token"],
         "take_amount": offer["take_amount"],
+        "date_taken": str(now),
         "fee": offer["fee"],
         "status": "EXECUTED",
     })
@@ -185,6 +192,7 @@ def cancel_offer(listing_id: str):
         "offer_amount": offer["offer_amount"],
         "take_token": offer["take_token"],
         "take_amount": offer["take_amount"],
+        "date_cancelled": str(now),
         "fee": offer["fee"],
         "status": "CANCELLED",
     })

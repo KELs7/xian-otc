@@ -3,8 +3,8 @@ import { networkType } from "./store";
 
 const config = {
     otcContract: {
-        "testnet": "con_otc",
-        "mainnet": "con_otc"
+        "testnet": "con_otc_v2",
+        "mainnet": "con_otc_v2"
     },
     otcFeePercentage: {
         "testnet": 0.005,
