@@ -47,7 +47,7 @@ export const handleTransaction = (response) => {
     if (!response) {
         console.error('Transaction status check failed: No response received.');
         // Provide feedback that the status couldn't be confirmed
-        showToast("Transaction failed: Could not confirm status.", "is-danger");
+        // showToast("Transaction failed: Could not confirm status.", "is-danger");
         return;
     }
     // --- END FIX ---
