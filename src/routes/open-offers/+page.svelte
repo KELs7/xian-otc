@@ -6,6 +6,7 @@
     import { onMount, getContext } from 'svelte';
     import { getOpenListedOffers } from '$lib/graphql/queries.js';
     import { fetchOpenOffers } from '$lib/graphql/process.js';
+    import { getTimeTo } from '$lib/utils';
 
     const { xdu } = getContext('app_functions');
 
@@ -308,7 +309,7 @@
                          <p><strong>Requesting:</strong> {formatNumber(offer.take_amount)} <span class="token-name">{offer.take_token || 'N/A'}</span></p>
                          <p class="maker-info"><strong>Maker:</strong> {shortenAddress(offer.maker)}</p>
                          <p class="offer-id"><strong>ID:</strong> {offer.id}</p>
-                         <p class="date-listed"><strong>date-listed:</strong> {offer.date_listed}</p>
+                         <p class="date-listed"><strong>date-listed:</strong> {new Date(offer.date_listed).toLocaleString()} {getTimeTo(new Date(offer.date_listed))}</p>
                          <p class="fee-info">Fee: {offer.fee !== undefined ? offer.fee + '%' : 'N/A'}</p>
                     </div>
                     <div class="offer-action">
