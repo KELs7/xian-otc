@@ -308,6 +308,7 @@
                          <p><strong>Requesting:</strong> {formatNumber(offer.take_amount)} <span class="token-name">{offer.take_token || 'N/A'}</span></p>
                          <p class="maker-info"><strong>Maker:</strong> {shortenAddress(offer.maker)}</p>
                          <p class="offer-id"><strong>ID:</strong> {offer.id}</p>
+                         <p class="date-listed"><strong>date-listed:</strong> {offer.date_listed}</p>
                          <p class="fee-info">Fee: {offer.fee !== undefined ? offer.fee + '%' : 'N/A'}</p>
                     </div>
                     <div class="offer-action">
