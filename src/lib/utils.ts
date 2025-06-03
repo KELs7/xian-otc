@@ -31,10 +31,10 @@ export const getTimeTo = (date: any) => {
     try {
       let delta = getTimeDelta(new Date(), date);
       if (isNaN(delta.days)) return "";
-      if (delta.days > 0) return `in ${delta.days} days`;
-      if (delta.hours > 0 && delta.days === 0) return `in ${delta.hours} hours`;
+      if (delta.days > 0) return `${delta.days} days ago`;
+      if (delta.hours > 0 && delta.days === 0) return `${delta.hours} hours ago`;
       if (delta.minutes > 0 && delta.hours === 0 && delta.days === 0)
-        return `in ${delta.minutes} minutes`;
+        return `${delta.minutes} minutes ago`;
       if (
         delta.seconds > 0 &&
         delta.minutes === 0 &&
