@@ -384,6 +384,8 @@
     .maker-info, .fee-info { font-size: 0.9rem; color: #555; }
     .offer-id { font-size: 0.8em; color: #777; word-break: break-all; margin-top: 0.6rem; }
     .offer-id strong { color: #555; }
+    .date-listed { font-size: 0.8em; color: #777; word-break: break-all; margin-top: 0.6rem; }
+    .date-listed strong { color: #555; }
     .offer-action { margin-top: 1rem; text-align: right; }
     .offer-action button { padding: 0.5rem 1rem; font-size: 0.95rem; }
     .offer-action button.button-cancel {
