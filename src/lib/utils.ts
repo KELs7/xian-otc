@@ -41,7 +41,7 @@ export const getTimeTo = (date: any) => {
         delta.hours === 0 &&
         delta.days === 0
       )
-        return `in ${delta.seconds} seconds`;
+        return `${delta.seconds} seconds ago`;
       return `now`;
     } catch (e) {
       return "";
