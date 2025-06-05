@@ -162,9 +162,7 @@
             takeAmount = null;
             formError = '';
             handleCloseModal();
-            if (!approvalSent || ($transactionInfo && $transactionInfo.method === "list_offer")) { // Only redirect if list offer was successful or approval failed before list
-                goto('/open-offers');
-            }
+            goto('/open-offers');
         }
     }
 
