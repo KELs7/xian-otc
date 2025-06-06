@@ -25,6 +25,7 @@ class TestOtcContract(unittest.TestCase):
     exploit_contract_name = "con_breakotc" # Name for the malicious contract
     attacker_vk = "attacker_wallet"
     vulnerable_otc_name_for_exploit = "con_otc_vulnerable"
+    safeguarded_otc_name_for_exploit = "con_otc_v3"
 
     initial_balance = Decimal("10000.0")
     default_fee_percent = Decimal("0.5")
@@ -929,13 +930,13 @@ class TestOtcContract(unittest.TestCase):
         # 1. Deploy the vulnerable OTC contract
         safeguarded_otc = self._deploy_contract_from_file(
             "con_otc_v3.py", 
-            self.vulnerable_otc_name_for_exploit, 
+            self.safeguarded_otc_name_for_exploit, 
             self.otc_owner_vk 
         )
         
         # 2. Deploy the malicious contract (con_breakotc)
         exploit_contract = self._deploy_contract_from_file(
-            "con_breakotc.py", 
+            "con_breakotcV3.py", 
             self.exploit_contract_name, 
             self.attacker_vk 
         )
@@ -944,12 +945,12 @@ class TestOtcContract(unittest.TestCase):
         token_a_contract = self.token_a # Attacker offers this, it will be the target of theft by exploit_contract
         token_a_name = self.token_a_name
         
-        otc_fee_percent = vulnerable_otc.fee.get()
+        otc_fee_percent = safeguarded_otc.fee.get()
 
         # --- Phase 1: Fund Vulnerable OTC with Token A (Simulates general liquidity) ---
         otc_initial_token_a_liquidity = Decimal("500.0")
-        self._fund_account(token_a_contract, self.vulnerable_otc_name_for_exploit, otc_initial_token_a_liquidity)
-        initial_otc_token_a_bal = self._get_balance_contracting_or_zero(token_a_contract, self.vulnerable_otc_name_for_exploit)
+        self._fund_account(token_a_contract, self.safeguarded_otc_name_for_exploit, otc_initial_token_a_liquidity)
+        initial_otc_token_a_bal = self._get_balance_contracting_or_zero(token_a_contract, self.safeguarded_otc_name_for_exploit)
         self.assertEqual(initial_otc_token_a_bal, otc_initial_token_a_liquidity)
 
         # --- Phase 2: Attacker lists Offer_X ---
@@ -962,8 +963,8 @@ class TestOtcContract(unittest.TestCase):
 
         offer_X_maker_TokenA_fee = offer_X_offer_TokenA_amount * otc_fee_percent / Decimal("100.0")
         
-        # Attacker approves vulnerable_otc to spend their Token A
-        self._approve_transfer(token_a_contract, self.attacker_vk, self.vulnerable_otc_name_for_exploit, offer_X_offer_TokenA_amount + offer_X_maker_TokenA_fee)
+        # Attacker approves safeguarded_otc to spend their Token A
+        self._approve_transfer(token_a_contract, self.attacker_vk, self.safeguarded_otc_name_for_exploit, offer_X_offer_TokenA_amount + offer_X_maker_TokenA_fee)
         
         list_env_offer_X = {"chain_id": "test-chain", "now": TEST_DATETIME_LIST_EXPLOIT}
         listing_id_Offer_X = safeguarded_otc.list_offer(
@@ -975,9 +976,9 @@ class TestOtcContract(unittest.TestCase):
             take_amount=offer_X_take_ExploitToken_amount  
         )
         self.assertIsNotNone(listing_id_Offer_X, "Listing ID for Attacker's Offer_X is None.")
-        # Now, (initial_otc_token_a_bal + offer_X_offer_TokenA_amount + offer_X_maker_TokenA_fee) of Token A is in vulnerable_otc.
+        # Now, (initial_otc_token_a_bal + offer_X_offer_TokenA_amount + offer_X_maker_TokenA_fee) of Token A is in safeguarded_otc.
         otc_holds_token_a = initial_otc_token_a_bal + offer_X_offer_TokenA_amount + offer_X_maker_TokenA_fee
-        self.assertEqual(self._get_balance_contracting_or_zero(token_a_contract, self.vulnerable_otc_name_for_exploit), otc_holds_token_a)
+        self.assertEqual(self._get_balance_contracting_or_zero(token_a_contract, self.safeguarded_otc_name_for_exploit), otc_holds_token_a)
 
         # --- Phase 3: Attacker prepares con_breakotc for exploit ---
         # The re-entrant call will target Offer_X itself.
@@ -990,7 +991,7 @@ class TestOtcContract(unittest.TestCase):
         # Attacker (as TAKER of Offer_X) needs to "pay" with ExploitToken.
         offer_X_taker_ExploitToken_fee = offer_X_take_ExploitToken_amount * otc_fee_percent / Decimal("100.0")
         
-        self._approve_transfer(exploit_contract, self.attacker_vk, self.vulnerable_otc_name_for_exploit, offer_X_take_ExploitToken_amount + offer_X_taker_ExploitToken_fee)
+        self._approve_transfer(exploit_contract, self.attacker_vk, self.safeguarded_otc_name_for_exploit, offer_X_take_ExploitToken_amount + offer_X_taker_ExploitToken_fee)
 
         # Record balances before the critical transaction by attacker
         attacker_token_a_bal_before_take_X = self._get_balance_contracting_or_zero(token_a_contract, self.attacker_vk)
@@ -999,9 +1000,10 @@ class TestOtcContract(unittest.TestCase):
          
         
         # Attacker (signer) takes their own Offer_X.
-        # vulnerable_otc will attempt to pay `offer_X_take_ExploitToken_amount` of `exploit_contract_name` to `attacker_vk` (as the maker of Offer_X).
+        # safeguarded_otc will attempt to pay `offer_X_take_ExploitToken_amount` of `exploit_contract_name` to `attacker_vk` (as the maker of Offer_X).
         # This payment call to `exploit_contract.transfer(...)` is the re-entrancy trigger.
-        safeguarded_otc.take_offer(listing_id=listing_id_Offer_X, signer=self.attacker_vk)
+        with self.assertRaisesRegex(AssertionError, "Contract is busy, please try again."):
+            safeguarded_otc.take_offer(listing_id=listing_id_Offer_X, signer=self.attacker_vk)
 
         # Record balances after the critical transaction by attacker
         attacker_token_a_bal_after_take_X = self._get_balance_contracting_or_zero(token_a_contract, self.attacker_vk)
@@ -1009,45 +1011,19 @@ class TestOtcContract(unittest.TestCase):
         # --- Verify post-exploit state ---
         
         # 1. Attacker's Offer_X status and taker (modified by the inner re-entrant call)
+        
         offer_X_state_after_exploit = safeguarded_otc.otc_listing[listing_id_Offer_X]
-        self.assertEqual(offer_X_state_after_exploit["status"], "EXECUTED", "Attacker's Offer_X status should be EXECUTED by inner call")        
+        with self.assertRaisesRegex(AssertionError, "Attacker's attempt was not EXECUTED by inner call"):
+            self.assertEqual(offer_X_state_after_exploit["status"], "EXECUTED", "Attacker's attempt was not EXECUTED by inner call")        
 
         # 2. Attacker (self.attacker_vk) gets Token A (stolen via exploit_contract during inner take of Offer_X)
         # Inner take_offer(Offer_X) by exploit_contract:
         #   - `offer_token` is `token_a_name`, `offer_amount` is `offer_X_offer_TokenA_amount`.
-        #   - `vulnerable_otc` pays `offer_X_offer_TokenA_amount` of Token A to `exploit_contract` (as taker of inner call).
+        #   - `safeguarded_otc` pays `offer_X_offer_TokenA_amount` of Token A to `exploit_contract` (as taker of inner call).
         #   - `exploit_contract.transfer` then sweeps this Token A to `attacker_vk`.
         amount_of_token_a_stolen = attacker_token_a_bal_after_take_X - attacker_token_a_bal_before_take_X
-        self.assertGreater(amount_of_token_a_stolen, otc_initial_token_a_liquidity, "Attacker did not drain liquidity")
-
-        # 3. Vulnerable OTC's Token A balance
-        # Initial in OTC from attacker's listing: `otc_holds_token_a`
-        # Inner take_offer(Offer_X):
-        #   - `exploit_contract` (as taker) pays fee for Offer_X using `exploit_contract_token`.
-        #   - `vulnerable_otc` pays `offer_X_offer_TokenA_amount` of Token A to `exploit_contract`.
-        # Net change for OTC's Token A: -offer_X_offer_TokenA_amount (paid to exploit_contract).
-        # The fee collected by OTC *for Token A* in Offer_X was `offer_X_maker_TokenA_fee`, already part of `otc_holds_token_a`.
-        # amount of token_a left in the vulnerable OTC contract is 0.5
-        otc_token_a_liquidity_left =  otc_holds_token_a - amount_of_token_a_stolen
-        # OTC should be left with only offer_X_maker_TokenA_fee -> 0.5 TokenA
-        self.assertEqual(self._get_balance_contracting_or_zero(token_a_contract, self.vulnerable_otc_name_for_exploit), otc_token_a_liquidity_left, "OTC Token A should only have attacker's maker fee left.")
-        
-        # 4. Attacker's balance of ExploitToken:
-        #    Attacker is the maker of Offer_X, expecting `offer_X_take_ExploitToken_amount`.
-        #    Attacker is also the taker of Offer_X (outer call, though it fails).
-        #    The inner `take_offer` by `exploit_contract`:
-        #       - `vulnerable_otc` pays `offer_X_take_ExploitToken_amount` to `attacker_vk` (as maker of Offer_X).
-
-        # Attacker minted more of their Exploit tokens to themselves in the process
-        total_supply_of_exploit_tokens = attacker_exploit_token_bal_before_take_X
-        self.assertGreater(self._get_balance_contracting_or_zero(exploit_contract, self.attacker_vk), total_supply_of_exploit_tokens)
-        
-        # 5. Earned fees in vulnerable OTC from the *inner successful trade* (Attacker's Offer_X taken by exploit_contract):
-        #    Fee on offer_token (Token A, paid by attacker when listing): offer_X_maker_TokenA_fee
-        #    Fee on take_token (ExploitToken, paid by exploit_contract as taker in inner call): offer_X_taker_ExploitToken_fee
-        # why are they inflated?
-        self.assertGreater(safeguarded_otc.view_earned_fees(token=token_a_name), offer_X_maker_TokenA_fee) # 3 > 0.5
-        self.assertGreater(safeguarded_otc.view_earned_fees(token=self.exploit_contract_name), offer_X_taker_ExploitToken_fee) # 0.3 > 0.05
+        with self.assertRaisesRegex(AssertionError, "Attacker did not drain liquidity"):
+            self.assertGreater(amount_of_token_a_stolen, otc_initial_token_a_liquidity, "Attacker did not drain liquidity")
 
 if __name__ == "__main__":
     if not os.path.exists("con_otc.py"):
