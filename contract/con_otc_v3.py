@@ -320,6 +320,6 @@ def view_earned_fees(token: str):
 
 @export
 def view_contract_balance(token: str):
-    balances_foreign_hash_instance = ForeignHash(foreign_contract=token, foreign_name='balances') # Renamed variable
-    contract_token_balance_value = balances_foreign_hash_instance[ctx.this] # Renamed variable
-    return decimal(str(contract_token_balance_value)) if contract_token_balance_value is not None else decimal("0.0")
+    balances = ForeignHash(foreign_contract=token, foreign_name='balances')
+    token_balance = balances[ctx.this]
+    return decimal(str(token_balance)) if token_balance is not None else decimal("0.0")
