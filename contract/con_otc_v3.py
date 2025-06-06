@@ -1,5 +1,3 @@
-# con_otc_vulnerable_patched.py
-
 random.seed()
 I = importlib
 
@@ -84,9 +82,23 @@ def list_offer(
     assert offer_amount > decimal("0.0"), "Offer amount must be positive"
     assert take_amount > decimal("0.0"), "Take amount must be positive"
 
-    current_time_for_id_and_listing = now # Use a consistent time for ID generation and listing data
-    listing_id_generated = hashlib.sha256(str(current_time_for_id_and_listing) + str(random.randrange(99)))
-    assert not otc_listing[listing_id_generated], "Generated ID not unique. Try again"
+    # --- Stronger ID Generation ---
+    id_components = []
+    id_components.append(str(now))
+    id_components.append(ctx.this)
+    id_components.append(ctx.caller)
+    id_components.append(ctx.signer)
+    id_components.append(offer_token)
+    id_components.append(str(offer_amount))
+    id_components.append(take_token)
+    id_components.append(str(take_amount))
+    id_components.append(str(random.getrandbits(128))) # High entropy random number
+
+    raw_id_string = ":".join(id_components)
+    listing_id_generated = hashlib.sha256(raw_id_string)
+
+    assert not otc_listing[listing_id_generated], "Generated ID not unique. This is highly unlikely; please report."
+    # --- End of Stronger ID Generation ---
 
     # Pre-calculate fee based on current contract fee
     current_contract_fee_percent = fee.get()
@@ -108,6 +120,8 @@ def list_offer(
         to=ctx.this,
         main_account=ctx.caller
     )
+
+    current_time_for_id_and_listing = now
 
     # Effects (finalize state): Create the listing *after* successful transfer
     otc_listing[listing_id_generated] = {
