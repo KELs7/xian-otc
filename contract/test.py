@@ -1096,7 +1096,4 @@ class TestOtcContract(unittest.TestCase):
                          "Guard should be false after a successful transaction.")
 
 if __name__ == "__main__":
-    if not os.path.exists("con_otc.py"):
-        print("Error: con_otc.py not found in the current directory.")
-    else:
-        unittest.main()
+    unittest.main()
