@@ -1092,5 +1092,90 @@ class TestOtcContract(unittest.TestCase):
         self.assertEqual(safeguarded_otc.reentrancyGuardActive.get(), False,
                          "Guard should be false after a successful transaction.")
 
+    # Miscellaneous ------------------------------------------------------------------------------------------
+
+    def test_27_event_emission_list_offer(self):
+        # 1. Deploy the safeguarded OTC contract
+        safeguarded_otc_contract_name = "con_otc_event_test"
+        safeguarded_otc = self._deploy_contract_from_file(
+            "con_otc_v3.py",  # Assuming this is your patched contract
+            safeguarded_otc_contract_name,
+            self.otc_owner_vk
+        )
+
+        # 2. Setup for list_offer
+        offer_amount = Decimal("100.0")
+        take_amount = Decimal("50.0")
+        current_fee_percent = safeguarded_otc.fee.get()
+        maker_fee = offer_amount / Decimal("100.0") * current_fee_percent
+        required_approval = offer_amount + maker_fee
+
+        self._approve_transfer(self.token_a, self.maker_vk, safeguarded_otc_contract_name, required_approval)
+
+        environment_list = {"chain_id": "test-chain", "now": TEST_DATETIME}
+
+        # 3. Call list_offer and request full output to get events
+        tx_output = safeguarded_otc.list_offer(
+            signer=self.maker_vk,
+            environment=environment_list,
+            offer_token=self.token_a_name,
+            offer_amount=offer_amount,
+            take_token=self.token_b_name,
+            take_amount=take_amount,
+            return_full_output=True  # <-- KEY CHANGE TO GET EVENTS
+        )
+
+        # 4. Verify the transaction was successful and events are present
+        self.assertEqual(tx_output['status_code'], 0, f"List offer failed: {tx_output.get('result')}")
+        self.assertIn('events', tx_output)
+        self.assertIsInstance(tx_output['events'], list)
+        self.assertEqual(len(tx_output['events']), 1, "Expected one event to be emitted.")
+
+        # 5. Inspect the emitted event
+        emitted_event = tx_output['events'][0]
+        listing_id_from_result = tx_output['result'] # The list_offer function returns the listing_id
+
+        # Expected event structure (based on LogEvent.write_event)
+        # event = {
+        #     "contract": contract, # Name of the contract that DEFINED the event (e.g., con_otc_event_test)
+        #     "event": self._event, # The event name (e.g., "Offer")
+        #     "signer": self._signer, # Signer of the transaction
+        #     "caller": caller, # Caller of list_offer (self.maker_vk)
+        #     "data_indexed": { ... },
+        #     "data": { ... },
+        # }
+
+        self.assertEqual(emitted_event['contract'], safeguarded_otc_contract_name)
+        self.assertEqual(emitted_event['event'], "Offer")
+        self.assertEqual(emitted_event['signer'], self.maker_vk) # Signer of this specific tx
+        self.assertEqual(emitted_event['caller'], self.maker_vk) # Caller of list_offer
+
+        # Verify indexed data
+        self.assertIn('id', emitted_event['data_indexed'])
+        self.assertEqual(emitted_event['data_indexed']['id'], listing_id_from_result)
+        self.assertIn('taker', emitted_event['data_indexed'])
+        self.assertEqual(emitted_event['data_indexed']['taker'], "None") # As per OfferEvent params
+        self.assertIn('status', emitted_event['data_indexed'])
+        self.assertEqual(emitted_event['data_indexed']['status'], "OPEN")
+
+        # Verify non-indexed data
+        self.assertIn('maker', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['maker'], self.maker_vk)
+        self.assertIn('offer_token', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['offer_token'], self.token_a_name)
+        self.assertIn('offer_amount', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['offer_amount'], offer_amount)
+        self.assertIn('take_token', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['take_token'], self.token_b_name)
+        self.assertIn('take_amount', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['take_amount'], take_amount)
+        self.assertIn('date_listed', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['date_listed'], str(TEST_DATETIME))
+        self.assertIn('fee', emitted_event['data'])
+        self.assertEqual(emitted_event['data']['fee'], current_fee_percent)
+
+        # 6. Sanity check: verify the returned result is still the listing ID
+        self.assertIsInstance(listing_id_from_result, str)
+
 if __name__ == "__main__":
     unittest.main()
