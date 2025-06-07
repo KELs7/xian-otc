@@ -1,5 +1,4 @@
 import unittest
-import os
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
 from contracting.stdlib.bridge.decimal import ContractingDecimal as Decimal
@@ -995,9 +994,7 @@ class TestOtcContract(unittest.TestCase):
 
         # Record balances before the critical transaction by attacker
         attacker_token_a_bal_before_take_X = self._get_balance_contracting_or_zero(token_a_contract, self.attacker_vk)
-        # Attacker's balance of their own ExploitToken (maker of Offer_X)
-        attacker_exploit_token_bal_before_take_X = self._get_balance_contracting_or_zero(exploit_contract, self.attacker_vk)
-         
+        # Attacker's balance of their own ExploitToken (maker of Offer_X)         
         
         # Attacker (signer) takes their own Offer_X.
         # safeguarded_otc will attempt to pay `offer_X_take_ExploitToken_amount` of `exploit_contract_name` to `attacker_vk` (as the maker of Offer_X).
