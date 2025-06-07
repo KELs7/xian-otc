@@ -1025,6 +1025,76 @@ class TestOtcContract(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "Attacker did not drain liquidity"):
             self.assertGreater(amount_of_token_a_stolen, otc_initial_token_a_liquidity, "Attacker did not drain liquidity")
 
+    # (Assuming con_otc_v3.py is the name of your safeguarded contract file)
+    # Add this definition to your TestOtcContract class variables
+    # self.safeguarded_otc_name_for_exploit = "con_otc_safeguarded" # Or similar unique name
+
+    def test_26_guard_failure_recovery_via_atomicity(self):
+        # 1. Deploy the safeguarded OTC contract
+        safeguarded_otc = self._deploy_contract_from_file(
+            "con_otc_v3.py",  # Use the filename of your patched contract
+            "con_otc_safeguarded_for_recovery_test", # Unique name for this test instance
+            self.otc_owner_vk
+        )
+
+        # 2. Verify initial guard state (should be False)
+        self.assertEqual(safeguarded_otc.reentrancyGuardActive.get(), False, "Guard should be initially false.")
+
+        # 3. Prepare for a call to list_offer that will fail an assertion
+        #    AFTER the guard is set but BEFORE it's released.
+        #    We'll use offer_amount = 0, which fails: assert offer_amount > decimal("0.0")
+        offer_token_name = self.token_a_name
+        zero_offer_amount = Decimal("0.0") # This will cause the assertion to fail
+        take_token_name = self.token_b_name
+        valid_take_amount = Decimal("10.0")
+
+        # Attacker (or any user) needs to approve tokens for the list_offer attempt,
+        # even if it's expected to fail. The transfer_from is later.
+        # For this specific assertion (amount > 0), no prior transfer_from is strictly needed
+        # for the assertion itself to be hit.
+
+        environment_for_failure = {"chain_id": "test-chain", "now": TEST_DATETIME}
+
+        # 4. Attempt the list_offer call that should fail internally
+        with self.assertRaisesRegex(AssertionError, "Offer amount must be positive"):
+            safeguarded_otc.list_offer(
+                signer=self.maker_vk,
+                environment=environment_for_failure,
+                offer_token=offer_token_name,
+                offer_amount=zero_offer_amount, # This will fail the internal check
+                take_token=take_token_name,
+                take_amount=valid_take_amount,
+            )
+
+        # 5. Verify guard state AFTER the failed transaction
+        # Due to transaction atomicity, the reentrancyGuardActive should have been rolled back to False.
+        self.assertEqual(safeguarded_otc.reentrancyGuardActive.get(), False,
+                         "Guard should be false after a failed transaction due to atomicity.")
+
+        # 6. Verify contract usability by making a successful call
+        # This proves the contract is not locked.
+        valid_offer_amount = Decimal("100.0")
+        required_approval_for_valid_offer = valid_offer_amount + (valid_offer_amount * safeguarded_otc.fee.get() / Decimal("100.0"))
+        self._approve_transfer(self.token_a, self.maker_vk, "con_otc_safeguarded_for_recovery_test", required_approval_for_valid_offer)
+
+        environment_for_success = {"chain_id": "test-chain", "now": TEST_DATETIME_PLUS_1SEC}
+        try:
+            listing_id_successful = safeguarded_otc.list_offer(
+                signer=self.maker_vk,
+                environment=environment_for_success,
+                offer_token=offer_token_name,
+                offer_amount=valid_offer_amount,
+                take_token=take_token_name,
+                take_amount=valid_take_amount,
+            )
+            self.assertIsNotNone(listing_id_successful, "Successful listing should return an ID.")
+        except Exception as e:
+            self.fail(f"Subsequent successful call failed, contract might be locked or another issue: {e}")
+
+        # 7. Verify guard state again after a successful transaction (should also be False)
+        self.assertEqual(safeguarded_otc.reentrancyGuardActive.get(), False,
+                         "Guard should be false after a successful transaction.")
+
 if __name__ == "__main__":
     if not os.path.exists("con_otc.py"):
         print("Error: con_otc.py not found in the current directory.")
