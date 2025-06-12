@@ -11,7 +11,7 @@
 
     import '../app.css'; // Import global styles
 
-    let xianBalance = 0; 
+    let xianBalance = "0"; 
 
     $: activePath = $page.url.pathname;
 
@@ -22,33 +22,39 @@
         XianWalletUtils.init(network);
 
         try {
-            const info = await XianWalletUtils.requestWalletInfo();
+            let info = await XianWalletUtils.requestWalletInfo();
             handleWalletInfo(info);
+
+            //if wallet is locked, wait for a while and request again
+            if (info && info.locked){
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                info = await XianWalletUtils.requestWalletInfo();
+                handleWalletInfo(info);
+            }
 
             if (info && info.address) { 
                 currentUserFullAddress.set(info.address); 
                 if (!info.locked) {
                     XianWalletUtils.getBalance("currency")
                         .then(balance => {
-                            const numericBalance = parseFloat(balance);
-                            xianBalance = isNaN(numericBalance) ? 0 : numericBalance;
+                            xianBalance = balance
                         })
                         .catch(error => {
                             console.error("Error fetching balance:", error);
-                            xianBalance = 0; 
+                            xianBalance = "0"; 
                         });
                 } else {
-                    xianBalance = 0;
+                    xianBalance = "0";
                 }
             } else {
                 currentUserFullAddress.set(null); 
-                xianBalance = 0;
+                xianBalance = "0";
             }
 
         } catch (error) {
             handleWalletError(error);
             currentUserFullAddress.set(null); 
-            xianBalance = 0; 
+            xianBalance = "0"; 
         }
 
         xdu = XianWalletUtils;
@@ -77,7 +83,7 @@
         
         {#if $walletAddressElementValue}
             <div class="wallet-balance">
-                {$walletAddressElementValue} | {xianBalance.toLocaleString()} 
+                {$walletAddressElementValue} | {xianBalance} 
             </div>
         {:else}
              <div class="wallet-balance">
