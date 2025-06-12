@@ -3,8 +3,8 @@ body {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     line-height: 1.6;
-    background-color: #f4f7f9;
-    color: #333;
+    background-color: #f0f4f8; /* Updated */
+    color: #2c3e50; /* Updated */
 }
 
 * {
@@ -12,7 +12,7 @@ body {
 }
 
 a {
-    color: #007bff;
+    color: #3498db; /* Updated */
     text-decoration: none;
 }
 
@@ -23,5 +23,5 @@ a:hover {
 h1, h2, h3, h4, h5, h6 {
     margin-top: 0;
     line-height: 1.3;
-    color: #1a1a1a;
+    color: #2c3e50; /* Updated */
 }
