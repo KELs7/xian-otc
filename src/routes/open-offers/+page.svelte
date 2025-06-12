@@ -369,7 +369,7 @@
         text-align: center;
         margin-bottom: 1.5rem;
         font-size: 0.95rem;
-        color: #555;
+        color: #566573; /* Updated */
         max-width: 800px;
         margin-left: auto;
         margin-right: auto;
@@ -377,45 +377,47 @@
         line-height: 1.6;
     }
     .offers-list { display: grid; gap: 1rem; }
-    .offer-item { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.5rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: box-shadow 0.2s ease; }
+    .offer-item { background-color: #ffffff; border: 1px solid #d0d9e0; border-radius: 8px; padding: 1rem 1.5rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: box-shadow 0.2s ease; } /* Updated border */
     .offer-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .offer-details p { margin: 0.4rem 0; line-height: 1.5; color: #333; word-break: break-word; }
-    .offer-details strong { color: #1a1a1a; }
-    .token-name { font-family: monospace; background-color: #f0f0f0; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
-    .maker-info, .fee-info { font-size: 0.9rem; color: #555; }
-    .offer-id { font-size: 0.8em; color: #777; word-break: break-all; margin-top: 0.6rem; }
-    .offer-id strong { color: #555; }
-    .date-listed { font-size: 0.8em; color: #777; word-break: break-all; margin-top: 0.6rem; }
-    .date-listed strong { color: #555; }
+    .offer-details p { margin: 0.4rem 0; line-height: 1.5; color: #2c3e50; word-break: break-word; } /* Updated */
+    .offer-details strong { color: #2c3e50; } /* Updated */
+    .token-name { font-family: monospace; background-color: #e4eaf0; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.9em; } /* Updated */
+    .maker-info, .fee-info { font-size: 0.9rem; color: #566573; } /* Updated */
+    .offer-id { font-size: 0.8em; color: #7f8c8d; word-break: break-all; margin-top: 0.6rem; } /* Updated */
+    .offer-id strong { color: #566573; } /* Updated */
+    .date-listed { font-size: 0.8em; color: #7f8c8d; word-break: break-all; margin-top: 0.6rem; } /* Updated */
+    .date-listed strong { color: #566573; } /* Updated */
     .offer-action { margin-top: 1rem; text-align: right; }
     .offer-action button { padding: 0.5rem 1rem; font-size: 0.95rem; }
     .offer-action button.button-cancel {
-        background-color: #dc3545; 
-        border-color: #dc3545;
+        background-color: #e74c3c;  /* Updated */
+        border-color: #e74c3c; /* Updated */
+        color: white; /* Ensure text is white on danger button */
     }
     .offer-action button.button-cancel:hover:not(:disabled) {
-        background-color: #c82333;
-        border-color: #bd2130;
+        background-color: #c0392b; /* Updated */
+        border-color: #c0392b; /* Updated */
     }
      .offer-action button.button-cancel:disabled {
-        background-color: #f0a0a8; 
-        border-color: #f0a0a8;
+        background-color: #f5b7b1;  /* Updated */
+        border-color: #f5b7b1; /* Updated */
+        color: #943126; /* Updated */
     }
 
     .pagination { display: flex; justify-content: center; align-items: center; margin-top: 2rem; gap: 1rem; }
-    .pagination span { font-size: 0.95rem; color: #555; }
+    .pagination span { font-size: 0.95rem; color: #566573; } /* Updated */
     .pagination button { padding: 0.4rem 0.8rem; }
 
     .loading-message, .error-message {
         text-align: center;
         padding: 2rem;
         font-size: 1.1rem;
-        color: #555;
+        color: #566573; /* Updated */
     }
     .error-message {
-        color: #dc3545;
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
+        color: #c0392b; /* Updated text color */
+        background-color: #fadbd8; /* Updated background */
+        border: 1px solid #f1948a; /* Updated border */
         border-radius: 4px;
         margin: 1rem;
     }

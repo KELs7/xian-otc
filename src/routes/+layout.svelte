@@ -117,7 +117,7 @@
         justify-content: space-between; 
         align-items: center;
         padding: 1rem 0;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #d0d9e0; /* Updated */
         gap: 1rem; /* Adds some space between flex items, helps with responsiveness */
     }
 
@@ -136,11 +136,11 @@
     }
 
     .wallet-balance {
-        background-color: #f0f0f0;
+        background-color: #e4eaf0; /* Updated */
         padding: 0.5rem 1rem;
         border-radius: 4px;
         font-size: 0.9rem;
-        color: #333;
+        color: #2c3e50; /* Updated */
         /* white-space: nowrap; */ /* Removed to allow wrapping */
         min-width: 0; /* Allow this to shrink */
         flex-shrink: 1; /* Allow shrinking */
@@ -157,7 +157,7 @@
     .main-nav a { 
         padding: 0.8rem 1rem; /* Slightly reduced horizontal padding */
         text-decoration: none;
-        color: #555;
+        color: #566573; /* Updated */
         font-weight: 500;
         border-bottom: 3px solid transparent; 
         transition: color 0.2s ease; 
@@ -176,12 +176,12 @@
     }
 
     .main-nav a:hover { 
-        color: #007bff;
+        color: #3498db; /* Updated */
         text-decoration: none; 
     }
 
     .main-nav a.active { 
-        color: #007bff;
+        color: #3498db; /* Updated */
     }
 
     .main-nav a.active span::after {
@@ -190,7 +190,7 @@
         left: 0;
         width: 100%; 
         height: 3px;
-        background-color: #007bff;
+        background-color: #3498db; /* Updated */
         top: calc(100% + 0.8rem); 
     }
 
@@ -205,8 +205,8 @@
         padding: 1rem 0;
         margin-top: 2rem;
         font-size: 0.85rem;
-        color: #888;
-        border-top: 1px solid #eee;
+        color: #7f8c8d; /* Updated */
+        border-top: 1px solid #d0d9e0; /* Updated */
     }
 
      :global(button) {
@@ -216,31 +216,31 @@
         font-size: 1rem;
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, filter 0.1s ease; 
-        background-color: #007bff;
+        background-color: #3498db; /* Updated */
         color: white;
-        border-color: #007bff;
+        border-color: #3498db; /* Updated */
         margin-top: 0.5rem;
     }
     :global(button:hover:not(:disabled)) { 
-        background-color: #0056b3;
-        border-color: #0056b3;
+        background-color: #2980b9; /* Updated */
+        border-color: #2980b9; /* Updated */
     }
     :global(button:active:not(:disabled)) { 
         transform: translateY(1px);
         filter: brightness(95%);
     }
     :global(button:disabled) {
-        background-color: #ccc;
-        border-color: #ccc;
+        background-color: #e9ecef; /* Updated */
+        border-color: #d0d9e0; /* Updated */
         cursor: not-allowed;
-        color: #666; 
+        color: #566573; /* Updated */
     }
 
     :global(input[type="text"]),
     :global(input[type="number"]) {
         width: 100%;
         padding: 0.75rem;
-        border: 1px solid #ccc;
+        border: 1px solid #d0d9e0; /* Updated */
         border-radius: 4px;
         font-size: 1rem;
         box-sizing: border-box;
@@ -250,7 +250,7 @@
         display: block;
         margin-bottom: 0.5rem;
         font-weight: 500;
-        color: #333;
+        color: #2c3e50; /* Updated */
     }
 
     /* Responsive adjustments for smaller screens */

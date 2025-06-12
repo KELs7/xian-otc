@@ -67,8 +67,6 @@
         isListingOffer = true; 
         console.log("Confirmed listing. Initiating approve and list sequence...");
 
-        let approvalSent = false;
-
         try {
             const baseOfferAmount = parseFloat(offerAmount); 
             if (isNaN(baseOfferAmount) || baseOfferAmount <= 0) {
@@ -108,7 +106,6 @@
                  handleTransactionError(err);
                  throw err;
             });
-            approvalSent = true;
 
             if (approveResponse && approveResponse.errors) {
                  console.error('Approve transaction failed immediately:', approveResponse.errors);
@@ -263,9 +260,9 @@
         max-width: 600px;
         margin: 0 auto;
         padding: 1.5rem;
-        background-color: #f9f9f9;
+        background-color: #f0f4f8; /* Updated */
         border-radius: 8px;
-        border: 1px solid #eee;
+        border: 1px solid #d0d9e0; /* Updated */
     }
 
     h1 {
@@ -277,7 +274,7 @@
         text-align: center;
         margin-bottom: 2rem; /* Increased margin to space from form */
         font-size: 0.95rem;
-        color: #555;
+        color: #566573; /* Updated */
         max-width: 550px; /* Constrain width for better readability */
         margin-left: auto;
         margin-right: auto;
@@ -290,7 +287,7 @@
     
     .form-divider {
         border: none;
-        border-top: 1px dashed #ccc;
+        border-top: 1px dashed #d0d9e0; /* Updated */
         margin: 2rem 0;
     }
 
@@ -302,9 +299,9 @@
     }
 
      .error-message {
-         color: #dc3545;
-         background-color: #f8d7da;
-         border: 1px solid #f5c6cb;
+         color: #c0392b; /* Updated text color */
+         background-color: #fadbd8; /* Updated background */
+         border: 1px solid #f1948a; /* Updated border */
          padding: 0.75rem 1.25rem;
          margin-bottom: 1rem;
          border-radius: 4px;
