@@ -22,8 +22,15 @@
         XianWalletUtils.init(network);
 
         try {
-            const info = await XianWalletUtils.requestWalletInfo();
+            let info = await XianWalletUtils.requestWalletInfo();
             handleWalletInfo(info);
+
+            //if wallet is locked, wait for a while and request again
+            if (info && info.locked){
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                info = await XianWalletUtils.requestWalletInfo();
+                handleWalletInfo(info);
+            }
 
             if (info && info.address) { 
                 currentUserFullAddress.set(info.address); 
