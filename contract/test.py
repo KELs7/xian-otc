@@ -34,7 +34,7 @@ class TestOtcContract(unittest.TestCase):
         self.client.flush()
 
         # Deploy OTC Contract
-        with open("con_otc.py") as f:
+        with open("con_otc_v3.py") as f:
             code = f.read()
             self.client.submit(code, name=self.otc_contract_name, signer=self.otc_owner_vk)
         self.otc_contract = self.client.get_contract(self.otc_contract_name)
