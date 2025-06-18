@@ -14,21 +14,13 @@ export const handleWalletInfo = (info) => {
     // Add null check for info as well for safety
     if (!info) {
         console.error("handleWalletInfo received null info");
-        walletAddressElementValue.set('Error fetching wallet info');
         showToast("Could not retrieve wallet information.", "is-danger");
         return;
     }
 
     if (info.locked) {
-        walletAddressElementValue.set('Wallet is Locked');
-        showToast("Your wallet is locked. Please unlock it to interact with the dapp.", "is-warning");
-    } else if (info.address) {
-        walletAddressElementValue.set(info.address.slice(0, 4) + '...' + info.address.slice(61, 64));
-        // Optionally show a success toast here if desired
-    } else {
-        // Handle unexpected case where info exists but address doesn't
-        walletAddressElementValue.set('Wallet connected (No Address)');
-        console.warn("Wallet info received without an address:", info);
+        // walletAddressElementValue.set('Wallet is Locked');
+        showToast("Please unlock your wallet to interact with this dapp.", "is-warning");
     }
 }
 
