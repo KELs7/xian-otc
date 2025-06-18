@@ -12,6 +12,7 @@
     import '../app.css'; // Import global styles
 
     let xianBalance = "0"; 
+    let connectWalletState = "Connect Wallet";
 
     $: activePath = $page.url.pathname;
 
@@ -41,6 +42,7 @@
         }
     }
 
+
     onMount(async ()=>{
         if (typeof window !== 'undefined') {
             windowWidth = window.innerWidth;
@@ -54,35 +56,8 @@
             let info = await XianWalletUtils.requestWalletInfo();
             handleWalletInfo(info);
 
-            if (info && info.locked){
-                await new Promise(resolve => setTimeout(resolve, 10000));
-                info = await XianWalletUtils.requestWalletInfo();
-                handleWalletInfo(info);
-            }
-
-            if (info && info.address) { 
-                currentUserFullAddress.set(info.address); 
-                if (!info.locked) {
-                    XianWalletUtils.getBalance("currency")
-                        .then(balance => {
-                            xianBalance = balance
-                        })
-                        .catch(error => {
-                            console.error("Error fetching balance:", error);
-                            xianBalance = "0"; 
-                        });
-                } else {
-                    xianBalance = "0";
-                }
-            } else {
-                currentUserFullAddress.set(null); 
-                xianBalance = "0";
-            }
-
         } catch (error) {
             handleWalletError(error);
-            currentUserFullAddress.set(null); 
-            xianBalance = "0"; 
         }
 
         xdu = XianWalletUtils;
@@ -93,6 +68,31 @@
             window.removeEventListener('resize', handleResize);
         }
     });
+
+    const connectWallet = async()=>{
+        connectWalletState = "Connecting..."
+        try {
+            let info = await XianWalletUtils.requestWalletInfo();
+            handleWalletInfo(info);
+
+            if (info && info.address) {  
+                if (!info.locked) {
+                    XianWalletUtils.getBalance("currency")
+                        .then(async (balance) => {
+                            await new Promise((resolve)=>setTimeout(resolve, 500))
+                            walletAddressElementValue.set(info.address.slice(0, 4) + '...' + info.address.slice(61, 64));
+                            currentUserFullAddress.set(info.address);
+                            xianBalance = balance
+                        })
+                        .catch(error => {
+                            console.error("Error fetching balance:", error);
+                        });
+                }
+            }
+        } catch (error) {
+            handleWalletError(error);
+        }
+    }
 
     setContext('app_functions', {
         xdu: () => {
@@ -131,9 +131,9 @@
                 {$walletAddressElementValue} | {xianBalance} 
             </div>
         {:else}
-             <div class="wallet-balance">
-                Wallet Not Connected 
-            </div>
+             <button class="wallet-balance" on:click={connectWallet}>
+                {connectWalletState} 
+             </button>
         {/if}
     </header>
 
