@@ -80,7 +80,7 @@
                     XianWalletUtils.getBalance("currency")
                         .then(async (balance) => {
                             await new Promise((resolve)=>setTimeout(resolve, 500))
-                            walletAddressElementValue.set(info.address.slice(0, 4) + '...' + info.address.slice(61, 64));
+                            walletAddressElementValue.set(info.truncatedAddress);
                             currentUserFullAddress.set(info.address);
                             xianBalance = balance
                         })
