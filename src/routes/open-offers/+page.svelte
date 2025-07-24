@@ -21,8 +21,8 @@
     let modalConfirmHandler = () => {};
     let modalConfirmButtonBusy = false;
 
-    let isTakingOffer = false; 
-    let isCancellingOffer = false;
+    let takingOfferId = null;
+    let cancellingOfferId = null;
 
     const itemsPerPage = 25;
     let currentPage = 1;
@@ -105,7 +105,7 @@
             return;
         }
 
-        isTakingOffer = true; 
+        takingOfferId = selectedOffer.id; 
         console.log(`Confirmed taking offer ${selectedOffer.id}. Initiating approve and take sequence...`);
 
         try {
@@ -192,7 +192,7 @@
             console.error("Error during take offer transaction sequence:", error);
         } finally {
             console.log("Cleaning up after take offer attempt.");
-            isTakingOffer = false; 
+            takingOfferId = null; 
             handleCloseModal(); 
             await loadOffers(currentPage); 
         }
@@ -206,7 +206,7 @@
             return;
         }
 
-        isCancellingOffer = true;
+        cancellingOfferId = selectedOffer.id;
         console.log(`Confirmed cancelling offer ${selectedOffer.id}. Initiating cancel transaction...`);
 
         try {
@@ -242,7 +242,7 @@
             console.error("Error during cancel offer transaction:", error);
         } finally {
             console.log("Cleaning up after cancel offer attempt.");
-            isCancellingOffer = false;
+            cancellingOfferId = null;
             handleCloseModal();
             await loadOffers(currentPage); 
         }
@@ -279,7 +279,7 @@
         });
     }
 
-    $: modalConfirmButtonBusy = isTakingOffer || isCancellingOffer;
+    $: modalConfirmButtonBusy = !!takingOfferId || !!cancellingOfferId;
 
 </script>
 
@@ -316,9 +316,9 @@
                         {#if $currentUserFullAddress && offer.maker === $currentUserFullAddress}
                             <button 
                                 on:click={() => handleCancelOfferClick(offer)} 
-                                disabled={isCancellingOffer || isTakingOffer || loading}
+                                disabled={!!cancellingOfferId || !!takingOfferId || loading}
                                 class="button-cancel">
-                                {#if isCancellingOffer}
+                                {#if cancellingOfferId === offer.id}
                                     Processing...
                                 {:else}
                                     Cancel Offer
@@ -327,8 +327,8 @@
                         {:else}
                             <button 
                                 on:click={() => handleTakeOfferClick(offer)} 
-                                disabled={isTakingOffer || isCancellingOffer || loading}>
-                                {#if isTakingOffer}
+                                disabled={!!takingOfferId || !!cancellingOfferId || loading}>
+                                {#if takingOfferId === offer.id}
                                     Processing...
                                 {:else}
                                     Take this offer
@@ -341,11 +341,11 @@
         </div>
 
         <div class="pagination">
-            <button disabled={currentPage <= 1 || loading || isTakingOffer || isCancellingOffer} on:click={() => goToPage(currentPage - 1)}>
+            <button disabled={currentPage <= 1 || loading || !!takingOfferId || !!cancellingOfferId} on:click={() => goToPage(currentPage - 1)}>
                 « Previous
             </button>
             <span>Page {currentPage} {#if loading && paginatedOffers.length > 0}(Updating...){/if}</span>
-            <button disabled={!hasMorePages || loading || isTakingOffer || isCancellingOffer} on:click={() => goToPage(currentPage + 1)}>
+            <button disabled={!hasMorePages || loading || !!takingOfferId || !!cancellingOfferId} on:click={() => goToPage(currentPage + 1)}>
                 Next »
             </button>
         </div>
